@@ -57,15 +57,15 @@ class Ui_MainWindow(object):
 "    font-weight: bold;"
 "    padding: 4px 10px;\n"
 "}")
-        self.val_system_action = QtWidgets.QLabel(self.layoutWidget)
-        self.val_system_action.setStyleSheet("QLabel {\n"
+        self.value_system_action = QtWidgets.QLabel(self.layoutWidget)
+        self.value_system_action.setStyleSheet("QLabel {\n"
 "    border: none;\n"
-"    border-radius: 7px;\n"
+"    border-radius: 7px;\n" 
 "    font-weight: bold;"
 "    padding: 4px 10px;\n"
 "}")        
-        self.val_system_action.setObjectName("val_system_action")             # System action
-        self.horizontalLayout.addWidget(self.val_system_action, 0, QtCore.Qt.AlignRight)
+        self.value_system_action.setObjectName("value_system_action")             # System action
+        self.horizontalLayout.addWidget(self.value_system_action, 0, QtCore.Qt.AlignRight)
         self.verticalLayout.addWidget(self.frameHeader)
         self.frameDashboard = QtWidgets.QFrame(self.verticalLayoutWidget)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Expanding)
@@ -112,7 +112,7 @@ class Ui_MainWindow(object):
         self.netVertical.setObjectName("netVertical")
         self.LBL_NAC = QtWidgets.QLabel(self.layoutWidget1)
         font = QtGui.QFont()
-        font.setPointSize(10)
+        font.setPointSize(12) #10
         font.setBold(True)
         font.setWeight(75)
         self.LBL_NAC.setFont(font)
@@ -126,6 +126,7 @@ class Ui_MainWindow(object):
         self.lbl_ip = QtWidgets.QLabel(self.layoutWidget1)
         self.lbl_ip.setObjectName("lbl_ip")
         self.lbl_ip.setStyleSheet("QLabel {\n"
+"font-weight: bold;"
 "    border: none;\n"
 "}")
         self.grid_NAC.addWidget(self.lbl_ip, 0, 0, 1, 1)
@@ -139,6 +140,7 @@ class Ui_MainWindow(object):
         self.lbl_author = QtWidgets.QLabel(self.layoutWidget1)
         self.lbl_author.setObjectName("lbl_author")
         self.lbl_author.setStyleSheet("QLabel {\n"
+"font-weight: bold;"
 "    border: none;\n"
 "}")
         self.grid_NAC.addWidget(self.lbl_author, 1, 0, 1, 1)
@@ -153,6 +155,7 @@ class Ui_MainWindow(object):
         self.lbl_port = QtWidgets.QLabel(self.layoutWidget1)
         self.lbl_port.setObjectName("lbl_port")
         self.lbl_port.setStyleSheet("QLabel {\n"
+"font-weight: bold;"
 "    border: none;\n"
 "}")
         self.grid_NAC.addWidget(self.lbl_port, 2, 0, 1, 1)
@@ -166,6 +169,7 @@ class Ui_MainWindow(object):
         self.lbl_packets = QtWidgets.QLabel(self.layoutWidget1)
         self.lbl_packets.setObjectName("lbl_packets")
         self.lbl_packets.setStyleSheet("QLabel {\n"
+"font-weight: bold;"
 "    border: none;\n"
 "}")
         self.grid_NAC.addWidget(self.lbl_packets, 3, 0, 1, 1)
@@ -202,7 +206,7 @@ class Ui_MainWindow(object):
         self.rtdeVertical.setObjectName("rtdeVertical")
         self.LBL_RTDE = QtWidgets.QLabel(self.layoutWidget2)
         font = QtGui.QFont()
-        font.setPointSize(10)
+        font.setPointSize(12)
         font.setBold(True)
         font.setWeight(75)
         self.LBL_RTDE.setFont(font)
@@ -215,6 +219,7 @@ class Ui_MainWindow(object):
         self.lbl_cartesian.setIndent(3)
         self.lbl_cartesian.setObjectName("lbl_cartesian")
         self.lbl_cartesian.setStyleSheet("QLabel {\n"
+"font-weight: bold;"
 "    border: none;\n"
 "}")
         self.rtdeVertical.addWidget(self.lbl_cartesian)
@@ -285,6 +290,7 @@ class Ui_MainWindow(object):
         self.lbl_joints.setIndent(3)
         self.lbl_joints.setObjectName("lbl_joints")             # joints
         self.lbl_joints.setStyleSheet("QLabel {\n"
+"font-weight: bold;"
 "    border: none;\n"
 "}")
         self.rtdeVertical.addWidget(self.lbl_joints)
@@ -295,7 +301,7 @@ class Ui_MainWindow(object):
 "    background-color: #E6F0FA;\n"
 "    border: none;\n"
 "    border-radius: 7px;\n"
-"    padding: 2px 5px;\n"
+"    padding: 2px 2px;\n"
 "}")
         self.value_J1.setObjectName("value_J1")
         # ----------------------------------------------------------------------------------- base joint
@@ -305,7 +311,7 @@ class Ui_MainWindow(object):
 "    background-color: #E6F0FA;\n"
 "    border: none;\n"
 "    border-radius: 7px;\n"
-"    padding: 2px 5px;\n"
+"    padding: 2px 2px;\n"
 "}")
         self.value_J2.setObjectName("value_J2")
         # ----------------------------------------------------------------------------------- shoulder joint
@@ -315,7 +321,7 @@ class Ui_MainWindow(object):
 "    background-color: #E6F0FA;\n"
 "    border: none;\n"
 "    border-radius: 7px;\n"
-"    padding: 2px 5px;\n"
+"    padding: 2px 2px;\n"
 "}")
         self.value_J3.setObjectName("value_J3")
         # ----------------------------------------------------------------------------------- elbow joint
@@ -325,7 +331,7 @@ class Ui_MainWindow(object):
 "    background-color: #E6F0FA;\n"
 "    border: none;\n"
 "    border-radius: 7px;\n"
-"    padding: 2px 5px;\n"
+"    padding: 2px 2px;\n"
 "}")
         self.value_J4.setObjectName("value_J4")
         # ----------------------------------------------------------------------------------- wrist 1 joint
@@ -335,7 +341,7 @@ class Ui_MainWindow(object):
 "    background-color: #E6F0FA;\n"
 "    border: none;\n"
 "    border-radius: 7px;\n"
-"    padding: 2px 5px;\n"
+"    padding: 2px 2px;\n"
 "}")
         self.value_J5.setObjectName("value_J5")
         # ----------------------------------------------------------------------------------- wrist 2 joint
@@ -345,7 +351,7 @@ class Ui_MainWindow(object):
 "    background-color: #E6F0FA;\n"
 "    border: none;\n"
 "    border-radius: 7px;\n"
-"    padding: 2px 5px;\n"
+"    padding: 2px 2px;\n"
 "}")
         self.value_J6.setObjectName("value_J6")
         # ----------------------------------------------------------------------------------- wrist 3 joint
@@ -380,7 +386,7 @@ class Ui_MainWindow(object):
         self.cmdVertical.setObjectName("cmdVertical")
         self.LBL_CMD = QtWidgets.QLabel(self.layoutWidget3)
         font = QtGui.QFont()
-        font.setPointSize(10)
+        font.setPointSize(12)
         font.setBold(True)
         font.setWeight(75)
         self.LBL_CMD.setFont(font)
@@ -401,32 +407,36 @@ class Ui_MainWindow(object):
         self.lbl_position = QtWidgets.QLabel(self.layoutWidget3)
         self.lbl_position.setObjectName("lbl_position")
         self.lbl_position.setStyleSheet("QLabel {\n"
+"font-weight: bold;"
 "    border: none;\n"
 "}")
+        # ----------------------------------------------------------------------------------- Target position
         self.grid_CMD.addWidget(self.lbl_position, 1, 0, 1, 1)
         self.value_position = QtWidgets.QLabel(self.layoutWidget3)
         self.value_position.setObjectName("value_position")
         self.value_position.setStyleSheet("QLabel {\n"
 "    border: none;\n"
 "}")
-        # ----------------------------------------------------------------------------------- Target position
         self.grid_CMD.addWidget(self.value_position, 1, 1, 1, 1, QtCore.Qt.AlignRight)
         self.lbl_veloc = QtWidgets.QLabel(self.layoutWidget3)
         self.lbl_veloc.setObjectName("lbl_veloc")
         self.lbl_veloc.setStyleSheet("QLabel {\n"
+"font-weight: bold;"
 "    border: none;\n"
 "}")
+        # ----------------------------------------------------------------------------------- Target velocity
         self.grid_CMD.addWidget(self.lbl_veloc, 2, 0, 1, 1)
         self.value_veloc = QtWidgets.QLabel(self.layoutWidget3)
         self.value_veloc.setObjectName("value_veloc")
         self.value_veloc.setStyleSheet("QLabel {\n"
 "    border: none;\n"
 "}")
-        # ----------------------------------------------------------------------------------- Target velocity
         self.grid_CMD.addWidget(self.value_veloc, 2, 1, 1, 1, QtCore.Qt.AlignRight)
+        # ----------------------------------------------------------------------------------- Target accel
         self.lbl_accel = QtWidgets.QLabel(self.layoutWidget3)
         self.lbl_accel.setObjectName("lbl_accel")
         self.lbl_accel.setStyleSheet("QLabel {\n"
+"font-weight: bold;"
 "    border: none;\n"
 "}")
         self.grid_CMD.addWidget(self.lbl_accel, 3, 0, 1, 1)
@@ -435,13 +445,29 @@ class Ui_MainWindow(object):
         self.value_accel.setStyleSheet("QLabel {\n"
 "    border: none;\n"
 "}")
-        # ----------------------------------------------------------------------------------- Target accel
         self.grid_CMD.addWidget(self.value_accel, 3, 1, 1, 1, QtCore.Qt.AlignRight)
         self.lbl_cmd = QtWidgets.QLabel(self.layoutWidget3)
         self.lbl_cmd.setObjectName("lbl_cmd")
         self.lbl_cmd.setStyleSheet("QLabel {\n"
+"font-weight: bold;"
 "    border: none;\n"
 "}")
+        # ----------------------------------------------------------------------------------- Gripper status
+        self.lbl_gripper = QtWidgets.QLabel(self.layoutWidget3)
+        self.lbl_gripper.setObjectName("lbl_gripper")
+        self.lbl_gripper.setStyleSheet("QLabel {\n"
+"font-weight: bold;"
+"    border: none;\n"
+"}")
+        self.grid_CMD.addWidget(self.lbl_gripper, 4, 0, 1, 1)
+
+        self.value_gripper = QtWidgets.QLabel(self.layoutWidget3)
+        self.value_gripper.setObjectName("value_gripper")
+        self.value_gripper.setStyleSheet("QLabel {\n"
+"    border: none;\n"
+"}")    
+        self.grid_CMD.addWidget(self.value_gripper, 4, 1, 1, 1, QtCore.Qt.AlignRight)
+        # -----------------------------------------------------------------------------------
         self.grid_CMD.addWidget(self.lbl_cmd, 0, 0, 1, 1)
         self.cmdVertical.addLayout(self.grid_CMD)
         self.cmdVertical.setStretch(0, 1)
@@ -469,7 +495,7 @@ class Ui_MainWindow(object):
         self.safetyVertical.setObjectName("safetyVertical")
         self.LBL_INTERLO = QtWidgets.QLabel(self.layoutWidget4)
         font = QtGui.QFont()
-        font.setPointSize(10)
+        font.setPointSize(12)
         font.setBold(True)
         font.setWeight(75)
         self.LBL_INTERLO.setFont(font)
@@ -483,6 +509,7 @@ class Ui_MainWindow(object):
         self.lbl_vel_limit = QtWidgets.QLabel(self.layoutWidget4)
         self.lbl_vel_limit.setObjectName("lbl_vel_limit")
         self.lbl_vel_limit.setStyleSheet("QLabel {\n"
+"font-weight: bold;"
 "    border: none;\n"
 "}")
         self.grid_preset.addWidget(self.lbl_vel_limit, 0, 0, 1, 1)
@@ -496,6 +523,7 @@ class Ui_MainWindow(object):
         self.lbl_req_speed = QtWidgets.QLabel(self.layoutWidget4)
         self.lbl_req_speed.setObjectName("lbl_req_speed")
         self.lbl_req_speed.setStyleSheet("QLabel {\n"
+"font-weight: bold;"
 "    border: none;\n"
 "}")
         self.grid_preset.addWidget(self.lbl_req_speed, 1, 0, 1, 1)
@@ -509,6 +537,7 @@ class Ui_MainWindow(object):
         self.lbl_accel_limit = QtWidgets.QLabel(self.layoutWidget4)
         self.lbl_accel_limit.setObjectName("lbl_accel_limit")
         self.lbl_accel_limit.setStyleSheet("QLabel {\n"
+"font-weight: bold;"
 "    border: none;\n"
 "}")
         self.grid_preset.addWidget(self.lbl_accel_limit, 2, 0, 1, 1)
@@ -536,23 +565,24 @@ class Ui_MainWindow(object):
         self.vioVertical = QtWidgets.QVBoxLayout(self.layoutWidget5)
         self.vioVertical.setContentsMargins(0, 0, 0, 0)
         self.vioVertical.setObjectName("vioVertical")
-        self.val_status = QtWidgets.QLabel(self.layoutWidget5)
-        self.val_status.setMinimumSize(QtCore.QSize(0, 20))
-        self.val_status.setObjectName("val_status")
-        self.val_status.setStyleSheet("QLabel {\n"
+        self.violation_status = QtWidgets.QLabel(self.layoutWidget5)
+        self.violation_status.setMinimumSize(QtCore.QSize(0, 20))
+        self.violation_status.setObjectName("violation_status")
+        self.violation_status.setStyleSheet("QLabel {\n"
+"font-weight: bold;"
 "    border: none;\n"
 "}")
         # ----------------------------------------------------------------------------------- violation status
-        self.vioVertical.addWidget(self.val_status)
-        self.val_action = QtWidgets.QLabel(self.layoutWidget5)
-        self.val_action.setMinimumSize(QtCore.QSize(0, 20))
-        self.val_action.setWordWrap(True)
-        self.val_action.setObjectName("val_action")
-        self.val_action.setStyleSheet("QLabel {\n"
+        self.vioVertical.addWidget(self.violation_status)
+        self.violation_action = QtWidgets.QLabel(self.layoutWidget5)
+        self.violation_action.setMinimumSize(QtCore.QSize(0, 20))
+        self.violation_action.setWordWrap(True)
+        self.violation_action.setObjectName("violation_action")
+        self.violation_action.setStyleSheet("QLabel {\n"
 "    border: none;\n"
 "}")
         # ----------------------------------------------------------------------------------- violation action
-        self.vioVertical.addWidget(self.val_action)
+        self.vioVertical.addWidget(self.violation_action)
         self.safetyVertical.addWidget(self.fraViolation)
         self.safetyVertical.setStretch(0, 1)
         self.safetyVertical.setStretch(1, 3)
@@ -585,7 +615,7 @@ class Ui_MainWindow(object):
         self.logVertical.setObjectName("logVertical")
         self.LBL_LOG = QtWidgets.QLabel(self.layoutWidget6)
         font = QtGui.QFont()
-        font.setPointSize(10)
+        font.setPointSize(12)
         font.setBold(True)
         font.setWeight(75)
         self.LBL_LOG.setFont(font)
@@ -646,66 +676,70 @@ class Ui_MainWindow(object):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
         self.LBL_GATEWAY.setText(_translate("MainWindow", "Authority and Safety Cybersecurity Gateway"))
-        self.val_system_action.setText(_translate("MainWindow", "System action"))          # system action value
+        self.value_system_action.setText(_translate("MainWindow", "System action"))          # system action value
         # ------------------------------------------------------------------------------------------------------
         self.LBL_NAC.setText(_translate("MainWindow", "Network Access Control"))
         self.lbl_ip.setText(_translate("MainWindow", "Incoming IP"))
-        self.value_ip.setText(_translate("MainWindow", "0.0.0.0"))                          # IP  value
+        self.value_ip.setText(_translate("MainWindow", "--.--.--.--"))                          # IP  value
         # ------------------------------------------------------------------------------------------------------
         self.lbl_author.setText(_translate("MainWindow", "Authorization"))      
         self.value_authorize.setText(_translate("MainWindow", "Unknown"))                   # Authorization value
         # ------------------------------------------------------------------------------------------------------
         self.lbl_port.setText(_translate("MainWindow", "Connection port"))
-        self.value_port.setText(_translate("MainWindow", "3000#"))                          # Port value
+        self.value_port.setText(_translate("MainWindow", "No port"))                          # Port value
         # ------------------------------------------------------------------------------------------------------
         self.lbl_packets.setText(_translate("MainWindow", "Rejected packets"))
-        self.value_packets.setText(_translate("MainWindow", "##"))                         # Packets value
+        self.value_packets.setText(_translate("MainWindow", "-"))                         # Packets value
         # ------------------------------------------------------------------------------------------------------
-        self.LBL_RTDE.setText(_translate("MainWindow", "Real-time robot telemetry (RTDE)"))
+        self.LBL_RTDE.setText(_translate("MainWindow", "Real-Time Robot Telemetry (RTDE)"))
         self.lbl_cartesian.setText(_translate("MainWindow", "Cartesian pose (base frame)"))
         # ------------------------------------------------------------------------------------------------------
-        self.value_X.setText(_translate("MainWindow", "X ####"))                             # X value
-        self.value_Rz.setText(_translate("MainWindow", "Rz #.##"))                           # Rz value
-        self.value_Y.setText(_translate("MainWindow", "Y ####"))                             # Y value
-        self.value_Z.setText(_translate("MainWindow", "Z ###"))                              # Z value
-        self.value_Rx.setText(_translate("MainWindow", "Rx #.##"))                           # Rx value
-        self.value_Ry.setText(_translate("MainWindow", "Ry #.##"))                           # Ry value
+        self.value_X.setText(_translate("MainWindow", "X -.-"))                             # X value
+        self.value_Rz.setText(_translate("MainWindow", "Rz -.-"))                           # Rz value
+        self.value_Y.setText(_translate("MainWindow", "Y -.-"))                             # Y value
+        self.value_Z.setText(_translate("MainWindow", "Z -.-"))                              # Z value
+        self.value_Rx.setText(_translate("MainWindow", "Rx -.-"))                           # Rx value
+        self.value_Ry.setText(_translate("MainWindow", "Ry -.-"))                           # Ry value
         # ------------------------------------------------------------------------------------------------------
         self.lbl_joints.setText(_translate("MainWindow", "Joint angles (deg)"))
         # ------------------------------------------------------------------------------------------------------
-        self.value_J1.setText(_translate("MainWindow", "J1 ##"))                             # base value
-        self.value_J2.setText(_translate("MainWindow", "J2 ##"))                             # shoulder value
-        self.value_J3.setText(_translate("MainWindow", "J3 ##"))                             # elbow value
-        self.value_J4.setText(_translate("MainWindow", "J4 ##"))                             # wrist 1 value
-        self.value_J5.setText(_translate("MainWindow", "J5 ##"))                             # wrist 2 value
-        self.value_J6.setText(_translate("MainWindow", "J6 ##"))                             # wrist 3 value
+        self.value_J1.setText(_translate("MainWindow", "J1 --°"))                             # base value
+        self.value_J2.setText(_translate("MainWindow", "J2 --°"))                             # shoulder value
+        self.value_J3.setText(_translate("MainWindow", "J3 --°"))                             # elbow value
+        self.value_J4.setText(_translate("MainWindow", "J4 --°"))                             # wrist 1 value
+        self.value_J5.setText(_translate("MainWindow", "J5 --°"))                             # wrist 2 value
+        self.value_J6.setText(_translate("MainWindow", "J6 --°"))                             # wrist 3 value
         # ------------------------------------------------------------------------------------------------------
-        self.LBL_CMD.setText(_translate("MainWindow", "Incoming command inspector"))
-        self.value_cmd.setText(_translate("MainWindow", "MoveL"))                            # active command value
+        self.LBL_CMD.setText(_translate("MainWindow", "Incoming Command Inspector"))
+        self.value_cmd.setText(_translate("MainWindow", "No command"))                     # active command value
         # ------------------------------------------------------------------------------------------------------
         self.lbl_position.setText(_translate("MainWindow", "Target position"))  
-        self.value_position.setText(_translate("MainWindow", "[##, ###, ###]"))              # target position value
+        self.value_position.setText(_translate("MainWindow", "[--, --, --]"))              # target position value
         # ------------------------------------------------------------------------------------------------------
         self.lbl_veloc.setText(_translate("MainWindow", "Target velocity"))
-        self.value_veloc.setText(_translate("MainWindow", "0.## m/s"))                       # target velocity value
+        self.value_veloc.setText(_translate("MainWindow", "-.-- m/s"))                       # target velocity value
         # ------------------------------------------------------------------------------------------------------
         self.lbl_accel.setText(_translate("MainWindow", "Target accel"))
-        self.value_accel.setText(_translate("MainWindow", "0.## m/s^2"))                     # target accel value
+        self.value_accel.setText(_translate("MainWindow", "-.-- m/s²"))                     # target accel value
+        # ------------------------------------------------------------------------------------------------------
+        self.lbl_gripper.setText(_translate("MainWindow", "Gripper status"))
+        self.value_gripper.setText(_translate("MainWindow", "Unavailable"))                   # gripper status value
         # ------------------------------------------------------------------------------------------------------
         self.lbl_cmd.setText(_translate("MainWindow", "Active command"))
-        self.LBL_INTERLO.setText(_translate("MainWindow", "Safety parameter interlock"))
+        # ------------------------------------------------------------------------------------------------------
+        self.LBL_INTERLO.setText(_translate("MainWindow", "Safety Parameter Interlock"))
         self.lbl_vel_limit.setText(_translate("MainWindow", "Preset velocity limit"))
-        self.value_vel_limit.setText(_translate("MainWindow", "0.vel m/s"))                  # preset velocity limit value
+        self.value_vel_limit.setText(_translate("MainWindow", "-.-- m/s"))                  # preset velocity limit value
         # ------------------------------------------------------------------------------------------------------
         self.lbl_req_speed.setText(_translate("MainWindow", "Requested speed"))
-        self.value_req_speed.setText(_translate("MainWindow", "0.speed m/s"))                # requested speed value
+        self.value_req_speed.setText(_translate("MainWindow", "-.-- m/s"))                # requested speed value
         # ------------------------------------------------------------------------------------------------------
         self.lbl_accel_limit.setText(_translate("MainWindow", "Preset accel limit"))
-        self.value_accel_limit.setText(_translate("MainWindow", "0.## m/s^2"))               # preset accel value
-        self.val_status.setText(_translate("MainWindow", "Violation detected"))              # violation status value
-        self.val_action.setText(_translate("MainWindow", "command blocked and robot put on hold")) # violation action value
+        self.value_accel_limit.setText(_translate("MainWindow", "-.-- m/s²"))               # preset accel value
+        self.violation_status.setText(_translate("MainWindow", "Violation detected"))              # violation status value
+        self.violation_action.setText(_translate("MainWindow", "command blocked and robot put on hold")) # violation action value
         # ------------------------------------------------------------------------------------------------------
-        self.LBL_LOG.setText(_translate("MainWindow", "Security and event audit log"))
+        self.LBL_LOG.setText(_translate("MainWindow", "Security and Event Audit Log"))
         item = self.tableEvents.horizontalHeaderItem(0)                                      # time? value
         item.setText(_translate("MainWindow", "Time"))
         item = self.tableEvents.horizontalHeaderItem(1)                                      # type value
