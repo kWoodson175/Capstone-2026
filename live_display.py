@@ -1,8 +1,8 @@
 from PyQt5 import QtCore, QtWidgets
 from GUI_framework import Ui_MainWindow
-#from packet_capturer import RTDEPacketCapture
-from proxy_translator import ProxyCommandSource
 from rtde_receive import RTDEReceiveInterface as RTDEReceive
+import URobot_proxy as robot_proxy
+from security_policy import(MAX_VELOCITY, MAX_ACCELERATION)
 
 import sys
 import math # for degrees
@@ -19,11 +19,8 @@ UPDATE_INTERVAL_MS = 100 #  100 ms = 0.1 sec
 
 class SafetyDashboard(QtWidgets.QMainWindow):
 
-    # Stop proxy when dashboard closes
-    def closeEvent(self, event):
-        if hasattr(self, "proxy_source"):
-            self.proxy_source.stop()
-        event.accept()
+    # proxy thread emits to this signal
+    proxy_event = QtCore.pyqtSignal(dict)
 
     def __init__(self):
         super().__init__()
@@ -32,20 +29,18 @@ class SafetyDashboard(QtWidgets.QMainWindow):
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
 
-        # ---------------------------------------------------------
-        # URobot_proxy command source
-        # ---------------------------------------------------------
-        proxy_path = QtCore.QDir.current().absoluteFilePath("display_proxy.py")
-        self.proxy_source = ProxyCommandSource(proxy_path, self)
+        # Preset Safety parameters
+        self.ui.value_vel_limit.setText(f"{MAX_VELOCITY:.2f} m/s")
+        self.ui.value_accel_limit.setText(f"{MAX_ACCELERATION:.2f} m/s²") 
 
-        self.proxy_source.command_received.connect(self.update_command_inspector)
-        self.proxy_source.network_received.connect(self.update_network_access)
-        self.proxy_source.proxy_message.connect(
-            lambda message: print("[PROXY]", message)
-        )
-        self.proxy_source.proxy_error.connect(print)
+        # ---------------------------------------------------------
+        # URobot_proxy
+        # ---------------------------------------------------------
+        self.proxy_event.connect(self.handle_proxy_event)
 
-        self.proxy_source.start()
+        robot_proxy.set_event_callback(self.proxy_event.emit)
+
+        robot_proxy.start_proxy()
         
         # Robot connection starts empty
         self.rtde_r = None
@@ -58,6 +53,15 @@ class SafetyDashboard(QtWidgets.QMainWindow):
         self.timer.timeout.connect(self.update_system_status)
         self.timer.timeout.connect(self.update_rtde_data)
         self.timer.start(UPDATE_INTERVAL_MS)
+
+    # Proxy event
+    def handle_proxy_event(self, data):
+
+        if data.get("command") == None:
+            return
+
+        self.update_command_inspector(data)
+        self.update_network_access(data)
 
     # Connect to UR robot and authorization 
     def connect_robot(self):
@@ -214,23 +218,23 @@ class SafetyDashboard(QtWidgets.QMainWindow):
         except Exception as e:
             print("RTDE read error:", e)
 
-    # Read incoming command packet
+    # Read incoming command packet and live Safety speed
     def update_command_inspector(self, data):
 
-        command = data["command"] # moveL, moveJ
-        command_id = data["command_id"] # code for move
+        command = data.get("command") # moveL, moveJ
+        #command_id = data.get("command_id") # code for move
             # X Y Z Rx Ry Rz for moveL
             #J1 2 3 4  5  6  for moveJ
-        target = data["target"]
-        speed = data["speed"]
-        acceleration = data["acceleration"]
+        target = data.get("target")
+        speed = data.get("speed")
+        acceleration = data.get("acceleration")
 
         # Active Command 
         self.ui.value_cmd.setText(command)
     
         # TARGET position
                     # moveL or moveL_FK
-        if command_id == 3 or command_id == 4: # moveL uses cartesian positions
+        if command == "moveL": # moveL uses cartesian positions
     
             x = target[0] * 1000
             y = target[1] * 1000
@@ -243,13 +247,13 @@ class SafetyDashboard(QtWidgets.QMainWindow):
             self.ui.value_veloc.setText(
                 f"{speed:.2f} m/s"
             )
-    
+
             self.ui.value_accel.setText(
                 f"{acceleration:.2f} m/s²"
             )
 
         # moveJ or  moveJ_IK
-        elif command_id == 1 or command_id == 2: # moveJ uses joint positions
+        elif command == "moveJ": # moveJ uses joint positions
     
             joints_deg = [
                 math.degrees(q)
@@ -270,7 +274,7 @@ class SafetyDashboard(QtWidgets.QMainWindow):
                 f"{acceleration:.2f} rad/s²"
             )
 
-    # not every data includes gripper
+    # Not every data packet includes gripper
     def update_gripper_command(self, data):
         gripper = data["gripper"]
         
@@ -299,7 +303,28 @@ class SafetyDashboard(QtWidgets.QMainWindow):
         elif destination_port == 30004:
             self.ui.value_port.setText(str(destination_port) + " (RTDE)")
 
- 
+    # Read Safety Parameter Interlock
+    def update_safety_interlock(self, data):
+        command = data.get("command")
+        speed = data.get("speed")
+        allowed = data.get("allowed")
+        reason = data.get("reason")
+
+        if command == "moveL":
+            self.ui.value_req_speed.setText(
+                f"{speed:.2f} m/s"
+            )
+
+        elif command == "moveJ":
+            self.ui.value_req_speed.setText(
+                f"{speed:.2f} rad/s"
+            )
+
+        if allowed:
+
+
+
+        
 # ---------------------------------------------------------
 # START APPLICATION
 # ---------------------------------------------------------
