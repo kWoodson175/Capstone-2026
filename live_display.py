@@ -1,7 +1,7 @@
 from PyQt5 import QtCore, QtWidgets
 from GUI_framework import Ui_MainWindow
-from packet_capturer import RTDEPacketCapture
-
+#from packet_capturer import RTDEPacketCapture
+from proxy_translator import ProxyCommandSource
 from rtde_receive import RTDEReceiveInterface as RTDEReceive
 
 import sys
@@ -13,17 +13,16 @@ import time # for timers
 # ---------------------------------------------------------
 
 ROBOT_IP = "192.168.56.101"   # URSim
-# ROBOT_IP = "192.168.1.112"  # Physical robot, if applicable
+#ROBOT_IP = "192.168.1.112"  # Physical robot, if applicable
 
 UPDATE_INTERVAL_MS = 100 #  100 ms = 0.1 sec
 
 class SafetyDashboard(QtWidgets.QMainWindow):
 
-    # for packet stuff
+    # Stop proxy when dashboard closes
     def closeEvent(self, event):
-
-        self.packet_capture.stop()
-
+        if hasattr(self, "proxy_source"):
+            self.proxy_source.stop()
         event.accept()
 
     def __init__(self):
@@ -34,17 +33,20 @@ class SafetyDashboard(QtWidgets.QMainWindow):
         self.ui.setupUi(self)
 
         # ---------------------------------------------------------
-        # Passive RTDE command packet capture
+        # URobot_proxy command source
         # ---------------------------------------------------------
-        self.packet_capture = RTDEPacketCapture(ROBOT_IP)
+        proxy_path = QtCore.QDir.current().absoluteFilePath("display_proxy.py")
+        self.proxy_source = ProxyCommandSource(proxy_path, self)
 
-        self.packet_capture.command_captured.connect(self.update_command_inspector)
-                            # different here
-        self.packet_capture.gripper_captured.connect(self.update_gripper_command)
-        self.packet_capture.command_captured.connect(self.update_network_access)
+        self.proxy_source.command_received.connect(self.update_command_inspector)
+        self.proxy_source.network_received.connect(self.update_network_access)
+        self.proxy_source.proxy_message.connect(
+            lambda message: print("[PROXY]", message)
+        )
+        self.proxy_source.proxy_error.connect(print)
 
-        self.packet_capture.start()
-
+        self.proxy_source.start()
+        
         # Robot connection starts empty
         self.rtde_r = None
 
@@ -55,7 +57,6 @@ class SafetyDashboard(QtWidgets.QMainWindow):
         self.timer = QtCore.QTimer(self)
         self.timer.timeout.connect(self.update_system_status)
         self.timer.timeout.connect(self.update_rtde_data)
-        #self.timer.timeout.connect(self.decode_update_command_packet)
         self.timer.start(UPDATE_INTERVAL_MS)
 
     # Connect to UR robot and authorization 
@@ -228,7 +229,7 @@ class SafetyDashboard(QtWidgets.QMainWindow):
         self.ui.value_cmd.setText(command)
     
         # TARGET position
-                    #moveL or moveL_FK
+                    # moveL or moveL_FK
         if command_id == 3 or command_id == 4: # moveL uses cartesian positions
     
             x = target[0] * 1000
@@ -247,7 +248,7 @@ class SafetyDashboard(QtWidgets.QMainWindow):
                 f"{acceleration:.2f} m/s²"
             )
 
-                    #moveJ or  moveJ_IK
+        # moveJ or  moveJ_IK
         elif command_id == 1 or command_id == 2: # moveJ uses joint positions
     
             joints_deg = [
@@ -298,8 +299,7 @@ class SafetyDashboard(QtWidgets.QMainWindow):
         elif destination_port == 30004:
             self.ui.value_port.setText(str(destination_port) + " (RTDE)")
 
-
-    
+ 
 # ---------------------------------------------------------
 # START APPLICATION
 # ---------------------------------------------------------
