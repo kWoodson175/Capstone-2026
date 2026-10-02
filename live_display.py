@@ -1,7 +1,7 @@
 from PyQt5 import QtCore, QtWidgets
 from GUI_framework import Ui_MainWindow
 from rtde_receive import RTDEReceiveInterface as RTDEReceive
-import URobot_proxy as robot_proxy
+import display_proxy as robot_proxy
 from security_policy import(MAX_VELOCITY, MAX_ACCELERATION)
 
 import sys
@@ -62,6 +62,7 @@ class SafetyDashboard(QtWidgets.QMainWindow):
 
         self.update_command_inspector(data)
         self.update_network_access(data)
+        self.update_safety_interlock(data)
 
     # Connect to UR robot and authorization 
     def connect_robot(self):
@@ -304,6 +305,7 @@ class SafetyDashboard(QtWidgets.QMainWindow):
             self.ui.value_port.setText(str(destination_port) + " (RTDE)")
 
     # Read Safety Parameter Interlock
+    
     def update_safety_interlock(self, data):
         command = data.get("command")
         speed = data.get("speed")
@@ -321,7 +323,21 @@ class SafetyDashboard(QtWidgets.QMainWindow):
             )
 
         if allowed:
-
+            self.ui.violation_status.setText(f"No violation detected")
+            self.ui.violation_action.setText(f"Command forwarded and robot begins operation")
+            self.ui.fraViolation.setStyleSheet("QFrame {\n"
+                "    background-color: lightgreen;\n"
+                "    border: 1px solid #AFCFEB;\n"
+                "    border-radius: 8px;\n"
+                "}")
+        else:
+            self.ui.violation_status.setText(f"Violation detected")
+            self.ui.violation_action.setText(f"Command blocked and robot placed on hold")
+            self.ui.fraViolation.setStyleSheet("QFrame {\n"
+                "    background-color: #FFD180;\n"
+                "    border: 1px solid #AFCFEB;\n"
+                "    border-radius: 8px;\n"
+                "}")
 
 
         
