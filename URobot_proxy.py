@@ -89,10 +89,31 @@ def forward_traffic(source, destination, port, direction):
                                     
                 except Exception as e:
                     print(f"PARSE ERROR: {e}")
-                    
+
+            # --------------------------------------------------------
+            # Added for the speedStop()        
             # Packet Forwarding Decision
             if allow_packet:
                 destination.sendall(data)
+            elif direction == "to_robot":
+                # The packet is blocked and not sent to the robot
+                print("[FIREWALL] Intercepted! Dropping packet and sending speedStop() to URSim.")
+
+                # URScript requires a newline to execute
+                stop_command = "speedStop()\n".encode("utf-8")
+
+                if port == 30002:
+                    # We are already on the URScript port, send directly over the existing socket
+                    destination.sendall(stop_command)
+
+                elif port == 30004:
+                    # We are on the binary RTDE port. We must send plaintext URScript via port 30002
+                    try:
+                        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as emergency_socket:
+                            emergency_socket.connect((URSIM_IP, 30002))
+                            emergency_socket.sendall(stop_command)
+                    except Exception as e:
+                        print(f"[ERROR] Failed to send speedStop() side-channel command: {e}")
             
     except ConnectionResetError:
         pass 
