@@ -3,6 +3,7 @@ from GUI_framework import Ui_MainWindow
 from rtde_receive import RTDEReceiveInterface as RTDEReceive
 import display_proxy as robot_proxy
 from security_policy import(MAX_VELOCITY, MAX_ACCELERATION)
+import re # for regex
 
 import sys
 import math # for degrees
@@ -121,20 +122,20 @@ class SafetyDashboard(QtWidgets.QMainWindow):
             """
             
             if runtime_state == 2:
-                self.ui.value_system_action.setText("System running")
+                self.ui.value_system_action.setText("▶ System running")
                 self.ui.value_system_action.setStyleSheet(
                     f"background-color: lightgreen;"
                     "    font-weight: bold;"                    
                 )
 
             elif runtime_state == 4:
-                self.ui.value_system_action.setText("System on hold")
+                self.ui.value_system_action.setText("|| System on hold")
                 self.ui.value_system_action.setStyleSheet(
                     f"background-color: #ffe699;"
                     "    font-weight: bold;"
                 )
             elif runtime_state == 1:
-                self.ui.value_system_action.setText("System stopped")
+                self.ui.value_system_action.setText("🛑 System stopped")
                 self.ui.value_system_action.setStyleSheet(
                     f"background-color: #ffb3b3;"
                     "    font-weight: bold;"
@@ -305,39 +306,102 @@ class SafetyDashboard(QtWidgets.QMainWindow):
             self.ui.value_port.setText(str(destination_port) + " (RTDE)")
 
     # Read Safety Parameter Interlock
-    
     def update_safety_interlock(self, data):
         command = data.get("command")
         speed = data.get("speed")
+        accel = data.get("acceleration")
         allowed = data.get("allowed")
         reason = data.get("reason")
 
         if command == "moveL":
-            self.ui.value_req_speed.setText(
-                f"{speed:.2f} m/s"
-            )
-
+            self.ui.value_req_speed.setText(f"{speed:.2f} m/s")
+            self.ui.value_req_accel.setText(f"{accel:.2f} m/s²")
         elif command == "moveJ":
-            self.ui.value_req_speed.setText(
-                f"{speed:.2f} rad/s"
-            )
+            self.ui.value_req_speed.setText(f"{speed:.2f} rad/s")
+            self.ui.value_req_accel.setText(f"{accel:.2f} rad/s²")
+
+        # reset after a violation happened
+        self.ui.value_req_speed.setStyleSheet("QLabel {\n"
+            "    border: none;\n"
+            "    color: black;\n"
+            "    font-weight: normal;\n"
+            "}")
+        self.ui.value_req_accel.setStyleSheet("QLabel {\n"
+            "    border: none;\n"
+            "    color: black;\n"
+            "    font-weight: normal;\n"
+            "}")
 
         if allowed:
             self.ui.violation_status.setText(f"No violation detected")
-            self.ui.violation_action.setText(f"Command forwarded and robot begins operation")
+            self.ui.violation_status.setStyleSheet("QLabel {\n"
+                "    font-weight: bold;\n"
+                "    border: none;\n"
+                "    color: black;\n"
+                "}")            
+            self.ui.violation_action.setText(f"Command forwarded and robot in motion")
+            self.ui.violation_action.setStyleSheet("QLabel {\n"
+                "    border: none;\n"
+                "    color: black;\n"
+                "}")
             self.ui.fraViolation.setStyleSheet("QFrame {\n"
                 "    background-color: lightgreen;\n"
                 "    border: 1px solid #AFCFEB;\n"
                 "    border-radius: 8px;\n"
                 "}")
+            self.ui.LBL_INTERLO.setText(f"Safety Parameter Interlock")
+            self.ui.fraSafety.setStyleSheet("QFrame {\n"
+                "    background-color: white;\n"
+                "    border: none;\n"
+                "}")
         else:
-            self.ui.violation_status.setText(f"Violation detected")
-            self.ui.violation_action.setText(f"Command blocked and robot placed on hold")
-            self.ui.fraViolation.setStyleSheet("QFrame {\n"
-                "    background-color: #FFD180;\n"
-                "    border: 1px solid #AFCFEB;\n"
+            self.ui.LBL_INTERLO.setText(f"⚠️ Safety Parameter Interlock")
+            self.ui.fraSafety.setStyleSheet("QFrame {\n"
+                "    background-color: white;\n"
+                "    border: 3px solid #FF0000;\n"
                 "    border-radius: 8px;\n"
                 "}")
+            self.ui.fraViolation.setStyleSheet("QFrame {\n"
+                "    background-color: #FFD180;\n"
+                "    border: none;\n"
+                "}")
+            self.ui.violation_status.setText(f"Violation detected")
+            self.ui.violation_status.setStyleSheet("QLabel {\n"
+                "    font-weight: bold;"
+                "    border: none;\n"
+                "    color: #8B0000;\n"
+                "}")
+            self.ui.violation_action.setText(f"Command blocked and robot placed on hold")
+            self.ui.violation_action.setStyleSheet("QLabel {\n"
+                "    border: none;\n"
+                "    color: #8B0000;\n"
+                "}")
+
+            # if speed was the violation
+            # if no match is found, re.search returns None
+            if re.search(r'^Velocity', reason):
+                if command == "moveL":
+                    self.ui.value_req_speed.setText(f"{speed:.2f} m/s ⚠️")
+                else: # "moveJ"
+                    self.ui.value_req_speed.setText(f"{speed:.2f} rad/s ⚠️")
+                
+                self.ui.value_req_speed.setStyleSheet("QLabel {\n"
+                    "    border: none;\n"
+                    "    color: #8B0000;\n"
+                    "    font-weight: bold;\n"
+                    "}")
+            
+            else: # Acceleration is reason
+                if command == "moveL":
+                    self.ui.value_req_accel.setText(f"{accel:.2f} m/s² ⚠️")
+                else: # "moveJ"
+                    self.ui.value_req_accel.setText(f"{accel:.2f} rad/s² ⚠️")
+                
+                self.ui.value_req_accel.setStyleSheet("QLabel {\n"
+                    "    border: none;\n"
+                    "    color: #8B0000;\n"
+                    "    font-weight: bold;\n"
+                    "}")
 
 
         

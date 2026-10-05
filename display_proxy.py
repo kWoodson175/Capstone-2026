@@ -6,6 +6,7 @@ import re  # imports regex to hunt for numbers inside text strings
 from security_policy import check_motion_limits #imports the motion limits 
 
 URSIM_IP = "192.168.56.101"
+#URSIM_IP = "192.168.1.112"  # Physical robot IP
 LOCAL_HOST = "127.0.0.1"
 PORTS_TO_PROXY = [29999, 30001, 30002, 30003, 30004] 
                 # DISPLAY CHANGES   
@@ -101,6 +102,8 @@ def inspect_urscript(data):
                     })
     except UnicodeDecodeError:
         pass
+
+    return allow_packet
 
 def inspect_rtde(packet):
     if len(packet) < 3:
@@ -200,6 +203,25 @@ def inspect_rtde(packet):
 
         return is_safe
 
+def send_stop_command():
+    """
+    Stop the running UR program
+    """
+    try:
+        print("[FIREWALL] Sending STOP command to robot...")
+
+        stop_script = b"stopj(5.0)\n"
+
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.settimeout(1.0)
+            s.connect((URSIM_IP, 30002))
+            s.sendall(stop_script)
+
+        print("[FIREWALL] stopj() sent")
+
+    except Exception as e:
+        print(f"[ERROR] Unable to send motion stop: {e}")
+
 """
 Read arbitrary TCP chunks from port 30004.
 
@@ -232,10 +254,7 @@ def forward_rtde_stream(source, destination):
             if len(rtde_buffer) < 3:
                 break
 
-            packet_size = struct.unpack(
-                ">H",
-                rtde_buffer[0:2]
-            )[0]
+            packet_size = struct.unpack(">H", rtde_buffer[0:2])[0]
 
             if packet_size < 3:
 
@@ -271,19 +290,21 @@ def forward_rtde_stream(source, destination):
             # ------------------------------------------------
 
             if allow_packet:
-                destination.sendall(packet)
-            
+                destination.sendall(packet)            
             else:
-                print(
-                    "[PROXY] RTDE packet discarded"
-                )
-
+                print("[PROXY] RTDE packet discarded")
+                
+                # Added for the Stop()            
+                # The packet is blocked and not sent to the robot
+                send_stop_command()
+                
 # general forwarder
 def forward_traffic(source, destination, port, direction):
 
     try:
         # special case goes first
         if port == 30004 and direction == "to_robot": 
+            # calls inspect_rtde()
             forward_rtde_stream(source, destination)
             return
 
@@ -304,6 +325,11 @@ def forward_traffic(source, destination, port, direction):
             # Packet Forwarding Decision
             if allow_data:
                 destination.sendall(data)
+            # Added for the Stop()
+            elif direction == "to_robot":
+                # The packet is blocked and not sent to the robot
+                send_stop_command()
+
             
     except ConnectionResetError:
         pass 
