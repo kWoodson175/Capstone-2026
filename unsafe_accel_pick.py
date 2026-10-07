@@ -20,7 +20,7 @@ SPEED_L = 0.08      # normal linear speed
 ACCEL_L = 0.19      # slow acceleration
 
 SPEED_J = 0.1       # joint speed
-ACCEL_J = 3.0
+ACCEL_J = 2.1       # DANGER
 
 PICK_SPEED = 0.05   # very slow vertical pickup/drop speed
 PICK_ACCEL = 0.05

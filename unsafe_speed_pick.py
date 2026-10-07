@@ -22,7 +22,7 @@ ACCEL_L = 0.19      # slow acceleration
 SPEED_J = 0.1       # joint speed
 ACCEL_J = 0.2
 
-PICK_SPEED = 2.50   # DANGER  
+PICK_SPEED = 0.51   # DANGER  
 PICK_ACCEL = 0.05
 
 # 28 mm from the pendant is 0.028 m.
