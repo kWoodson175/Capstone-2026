@@ -42,6 +42,9 @@ class SafetyDashboard(QtWidgets.QMainWindow):
         robot_proxy.set_event_callback(self.proxy_event.emit)
 
         robot_proxy.start_proxy()
+
+        # Stop button is functional
+        self.ui.stop_button.clicked.connect(robot_proxy.send_stop_command)
         
         # Robot connection starts empty
         self.rtde_r = None
@@ -58,12 +61,16 @@ class SafetyDashboard(QtWidgets.QMainWindow):
     # Proxy event
     def handle_proxy_event(self, data):
 
-        if data.get("command") == None:
+        if data.get("event_type") == "gripper":
+            self.update_gripper_command(data)
+            self.update_network_access(data)
             return
+        
+        if data.get("command") is not None:
+            self.update_command_inspector(data)
+            self.update_network_access(data)
+            self.update_safety_interlock(data)
 
-        self.update_command_inspector(data)
-        self.update_network_access(data)
-        self.update_safety_interlock(data)
 
     # Connect to UR robot and authorization 
     def connect_robot(self):

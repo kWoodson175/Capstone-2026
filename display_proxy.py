@@ -51,7 +51,8 @@ def inspect_urscript(data):
         for line in text_cmd.split('\n'):
             clean_line = line.strip()
             cmd_lower = clean_line.lower()
-            
+
+            # RTDE movement commands
             if cmd_lower.startswith("movel(") or cmd_lower.startswith("movej(") or cmd_lower.startswith("speedl("):
                 
                 # Use Regex to hunt down the 'a=' and 'v=' values anywhere in the text string
@@ -100,6 +101,30 @@ def inspect_urscript(data):
                         "source_ip": LOCAL_HOST,
                         "destination_port": 30002
                     })
+            
+            # CHANGES
+            # Gripper commands added
+            if "rq_close_and_wait()" in cmd_lower:
+                print("[GRIPPER] CLOSE")
+
+                emit_event({
+                    "event_type": "gripper",
+                    "gripper": "Close",
+                    "raw_command": clean_line,
+                    "source_ip": LOCAL_HOST,
+                    "destination_port": 30002
+                })
+
+            elif "rq_open_and_wait()" in cmd_lower:
+                print("[GRIPPER] OPEN")
+
+                emit_event({
+                    "event_type": "gripper",
+                    "gripper": "Open",
+                    "raw_command": clean_line,
+                    "source_ip": LOCAL_HOST,
+                    "destination_port": 30002
+                })
     except UnicodeDecodeError:
         pass
 
@@ -210,7 +235,7 @@ def send_stop_command():
     try:
         print("[FIREWALL] Sending STOP command to robot...")
 
-        stop_script = b"stopj(5.0)\n"
+        stop_script = b"stopj(5.0)\n" # deceleration in rad/s^2
 
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.settimeout(1.0)
@@ -361,6 +386,7 @@ def start_listener(port):
     
     while True:
         local_socket, addr = server.accept()
+
         threading.Thread(target=handle_connection, args=(local_socket, port), daemon=True).start()
 
 # DISPLAY CHANGES

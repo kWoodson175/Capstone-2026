@@ -57,11 +57,40 @@ class Ui_MainWindow(object):
 "    font-weight: bold;"
 "    padding: 4px 10px;\n"
 "}")
+#----------------------------------------------------------------------- stop button
+        self.horizontalLayout.addStretch() 
+        self.stop_button = QtWidgets.QPushButton(self.layoutWidget)
+        self.stop_button.setObjectName("stop_button")
+        self.stop_button.setMinimumSize(QtCore.QSize(110, 32))
+        self.stop_button.setMaximumHeight(48) # 32
+        self.stop_button.setStyleSheet("QPushButton {\n"
+"       background-color: #4E95DC;\n"
+"       border: 4px solid #ACADAF;\n"
+"       border-radius: 7px;\n"
+"       font-weight: bold;\n"
+"       font-size: 16px;\n"
+"       padding: 4px 10 px;\n"                                       
+"}"
+        "QPushButton:hover {\n"
+"       background-color: #2A7ED3;\n"
+"}"
+        "QPushButton:pressed {\n"
+"       color: white;\n" # font color
+"       background-color: #0C233B;\n"
+"}")
+        self.horizontalLayout.addWidget(
+        self.stop_button,
+        0,
+        QtCore.Qt.AlignRight
+        )
+        self.horizontalLayout.addStretch()
+# --------------------------------------------------------------------------------
         self.value_system_action = QtWidgets.QLabel(self.layoutWidget)
         self.value_system_action.setStyleSheet("QLabel {\n"
 "    border: none;\n"
 "    border-radius: 7px;\n" 
 "    font-weight: bold;"
+"    font-size: 14px;\n"
 "    padding: 4px 10px;\n"
 "}")        
         self.value_system_action.setObjectName("value_system_action")             # System action
@@ -81,6 +110,7 @@ class Ui_MainWindow(object):
         self.frameDashboard.setStyleSheet("QFrame {\n"
 "    background-color: #E6F0FA;\n"
 "    border: 1px solid #AFCFEB;\n"
+"    font-size: 14px;\n" # test
 "    border-radius: 8px;\n"
 "}")
         self.verticalLayoutWidget_2.setGeometry(QtCore.QRect(9, 9, 791, 401))
@@ -118,6 +148,8 @@ class Ui_MainWindow(object):
         self.LBL_NAC.setFont(font)
         self.LBL_NAC.setObjectName("LBL_NAC")
         self.LBL_NAC.setStyleSheet("QLabel {\n"
+"    color: #4E95DC;\n"
+"    font-size: 18px;\n"
 "    border: none;\n"
 "}")
         self.netVertical.addWidget(self.LBL_NAC, 0, QtCore.Qt.AlignHCenter)
@@ -126,7 +158,7 @@ class Ui_MainWindow(object):
         self.lbl_ip = QtWidgets.QLabel(self.layoutWidget1)
         self.lbl_ip.setObjectName("lbl_ip")
         self.lbl_ip.setStyleSheet("QLabel {\n"
-"font-weight: bold;"
+"    font-weight: bold;"
 "    border: none;\n"
 "}")
         self.grid_NAC.addWidget(self.lbl_ip, 0, 0, 1, 1)
@@ -213,6 +245,8 @@ class Ui_MainWindow(object):
         self.LBL_RTDE.setFont(font)
         self.LBL_RTDE.setObjectName("LBL_RTDE")
         self.LBL_RTDE.setStyleSheet("QLabel {\n"
+"    color: #4E95DC;\n"
+"    font-size: 18px;\n"
 "    border: none;\n"
 "}")
         self.rtdeVertical.addWidget(self.LBL_RTDE, 0, QtCore.Qt.AlignHCenter)
@@ -220,7 +254,7 @@ class Ui_MainWindow(object):
         self.lbl_cartesian.setIndent(3)
         self.lbl_cartesian.setObjectName("lbl_cartesian")
         self.lbl_cartesian.setStyleSheet("QLabel {\n"
-"font-weight: bold;"
+"    font-weight: bold;"
 "    border: none;\n"
 "}")
         self.rtdeVertical.addWidget(self.lbl_cartesian)
@@ -291,22 +325,25 @@ class Ui_MainWindow(object):
         self.lbl_joints.setIndent(3)
         self.lbl_joints.setObjectName("lbl_joints")             # joints
         self.lbl_joints.setStyleSheet("QLabel {\n"
-"font-weight: bold;"
+"    font-weight: bold;\n"
 "    border: none;\n"
 "}")
         self.rtdeVertical.addWidget(self.lbl_joints)
         self.grid_joints = QtWidgets.QGridLayout()
         self.grid_joints.setObjectName("grid_joints")
+        self.grid_joints.setHorizontalSpacing(4)
+        for column in range(6):
+                self.grid_joints.setColumnStretch(column, 1)
         self.value_J1 = QtWidgets.QLabel(self.layoutWidget2)
         self.value_J1.setStyleSheet("QLabel {\n"
 "    background-color: #E6F0FA;\n"
 "    border: none;\n"
 "    border-radius: 7px;\n"
-"    padding: 2px 2px;\n"
+"    padding: 2px 1px;\n"
 "}")
         self.value_J1.setObjectName("value_J1")
         # ----------------------------------------------------------------------------------- base joint
-        self.grid_joints.addWidget(self.value_J1, 0, 0, 1, 1, QtCore.Qt.AlignHCenter)
+        self.grid_joints.addWidget(self.value_J1, 0, 0, 1, 1, QtCore.Qt.AlignCenter)
         self.value_J2 = QtWidgets.QLabel(self.layoutWidget2)
         self.value_J2.setStyleSheet("QLabel {\n"
 "    background-color: #E6F0FA;\n"
@@ -316,7 +353,7 @@ class Ui_MainWindow(object):
 "}")
         self.value_J2.setObjectName("value_J2")
         # ----------------------------------------------------------------------------------- shoulder joint
-        self.grid_joints.addWidget(self.value_J2, 0, 1, 1, 1, QtCore.Qt.AlignHCenter)
+        self.grid_joints.addWidget(self.value_J2, 0, 1, 1, 1, QtCore.Qt.AlignCenter)
         self.value_J3 = QtWidgets.QLabel(self.layoutWidget2)
         self.value_J3.setStyleSheet("QLabel {\n"
 "    background-color: #E6F0FA;\n"
@@ -326,7 +363,7 @@ class Ui_MainWindow(object):
 "}")
         self.value_J3.setObjectName("value_J3")
         # ----------------------------------------------------------------------------------- elbow joint
-        self.grid_joints.addWidget(self.value_J3, 0, 2, 1, 1, QtCore.Qt.AlignHCenter)
+        self.grid_joints.addWidget(self.value_J3, 0, 2, 1, 1, QtCore.Qt.AlignCenter)
         self.value_J4 = QtWidgets.QLabel(self.layoutWidget2)
         self.value_J4.setStyleSheet("QLabel {\n"
 "    background-color: #E6F0FA;\n"
@@ -336,7 +373,7 @@ class Ui_MainWindow(object):
 "}")
         self.value_J4.setObjectName("value_J4")
         # ----------------------------------------------------------------------------------- wrist 1 joint
-        self.grid_joints.addWidget(self.value_J4, 0, 3, 1, 1, QtCore.Qt.AlignHCenter)
+        self.grid_joints.addWidget(self.value_J4, 0, 3, 1, 1, QtCore.Qt.AlignCenter)
         self.value_J5 = QtWidgets.QLabel(self.layoutWidget2)
         self.value_J5.setStyleSheet("QLabel {\n"
 "    background-color: #E6F0FA;\n"
@@ -346,7 +383,7 @@ class Ui_MainWindow(object):
 "}")
         self.value_J5.setObjectName("value_J5")
         # ----------------------------------------------------------------------------------- wrist 2 joint
-        self.grid_joints.addWidget(self.value_J5, 0, 4, 1, 1, QtCore.Qt.AlignHCenter)
+        self.grid_joints.addWidget(self.value_J5, 0, 4, 1, 1, QtCore.Qt.AlignCenter)
         self.value_J6 = QtWidgets.QLabel(self.layoutWidget2)
         self.value_J6.setStyleSheet("QLabel {\n"
 "    background-color: #E6F0FA;\n"
@@ -356,7 +393,7 @@ class Ui_MainWindow(object):
 "}")
         self.value_J6.setObjectName("value_J6")
         # ----------------------------------------------------------------------------------- wrist 3 joint
-        self.grid_joints.addWidget(self.value_J6, 0, 5, 1, 1, QtCore.Qt.AlignHCenter)
+        self.grid_joints.addWidget(self.value_J6, 0, 5, 1, 1, QtCore.Qt.AlignCenter)
         self.rtdeVertical.addLayout(self.grid_joints)
         self.rtdeVertical.setStretch(0, 1)
         self.rtdeVertical.setStretch(2, 2)
@@ -393,6 +430,8 @@ class Ui_MainWindow(object):
         self.LBL_CMD.setFont(font)
         self.LBL_CMD.setObjectName("LBL_CMD")
         self.LBL_CMD.setStyleSheet("QLabel {\n"
+"    color: #4E95DC;\n"
+"    font-size: 18px;\n"
 "    border: none;\n"
 "}")
         self.cmdVertical.addWidget(self.LBL_CMD, 0, QtCore.Qt.AlignHCenter)
@@ -502,6 +541,8 @@ class Ui_MainWindow(object):
         self.LBL_INTERLO.setFont(font)
         self.LBL_INTERLO.setObjectName("LBL_INTERLO")
         self.LBL_INTERLO.setStyleSheet("QLabel {\n"
+"    color: #4E95DC;\n"
+"    font-size: 18px;\n"
 "    background-color: white;\n"
 "    border: none;\n"
 "}")
@@ -694,6 +735,7 @@ class Ui_MainWindow(object):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
         self.LBL_GATEWAY.setText(_translate("MainWindow", "🛡️ Authority and Safety Cybersecurity Gateway"))
+        self.stop_button.setText(_translate("MainWindow", "E-STOP"))
         self.value_system_action.setText(_translate("MainWindow", "System action"))          # system action value
         # ------------------------------------------------------------------------------------------------------
         self.LBL_NAC.setText(_translate("MainWindow", "🌐 Network Access Control"))
