@@ -16,6 +16,22 @@ Z_MAX = 0.500
 MAX_VELOCITY = 0.5 # 500 mm/s       
 MAX_ACCELERATION = 2.0 #2000 mm/s^2
 
+#-----------------------------------
+# IP Whitelist
+#-----------------------------------
+
+ALLOWED_IPS = ["127.0.0.1", # VM IP
+               #"192.168.1.101" # IP OF ROBOT
+
+def is_ip_allowed(client_ip):
+    """
+    Checks if an incoming IP address is in the whitelist.
+    """
+    if client_ip in ALLOWED_IPS:
+        return True
+    else:
+        return False
+
 def check_motion_limits(x, y, z, v, a):
     """
     Validates whether a requested motion is within safe operational limits.
