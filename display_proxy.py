@@ -4,6 +4,7 @@ import time
 import struct # imports struct to translate raw binary bytes into python numbers
 import re  # imports regex to hunt for numbers inside text strings
 from security_policy import check_motion_limits #imports the motion limits 
+from security_policy import is_ip_allowed # imports the ip whitelist
 
 URSIM_IP = "192.168.56.101"
 #URSIM_IP = "192.168.1.112"  # Physical robot IP
@@ -386,7 +387,16 @@ def start_listener(port):
     
     while True:
         local_socket, addr = server.accept()
+        client_ip = addr[0]
 
+        #-----------------------------------------
+        # Whitelist IP check
+        #------------------------------------------
+        if not is_ip_allowed(client_ip):
+            print(f"[FIREWALL] BLOCKED connection attempt from unauthorized IP: {client_ip} on port {port}")
+            local_socket.close() # Drop connection instantly
+            continue # Wait for the next connection
+            
         threading.Thread(target=handle_connection, args=(local_socket, port), daemon=True).start()
 
 # DISPLAY CHANGES
