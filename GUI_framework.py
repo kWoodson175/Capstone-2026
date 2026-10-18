@@ -61,10 +61,10 @@ class Ui_MainWindow(object):
         self.horizontalLayout.addStretch() 
         self.stop_button = QtWidgets.QPushButton(self.layoutWidget)
         self.stop_button.setObjectName("stop_button")
-        self.stop_button.setMinimumSize(QtCore.QSize(110, 32))
+        self.stop_button.setMinimumSize(QtCore.QSize(48, 32)) # 110
         self.stop_button.setMaximumHeight(48) # 32
         self.stop_button.setStyleSheet("QPushButton {\n"
-"       background-color: #4E95DC;\n"
+"       background-color: #ff0000;\n"
 "       border: 4px solid #ACADAF;\n"
 "       border-radius: 7px;\n"
 "       font-weight: bold;\n"
@@ -72,17 +72,41 @@ class Ui_MainWindow(object):
 "       padding: 4px 10 px;\n"                                       
 "}"
         "QPushButton:hover {\n"
-"       background-color: #2A7ED3;\n"
+"       background-color: #dc143c;\n"
 "}"
         "QPushButton:pressed {\n"
 "       color: white;\n" # font color
-"       background-color: #0C233B;\n"
+"       background-color: #97282d;\n"
 "}")
         self.horizontalLayout.addWidget(
         self.stop_button,
-        0,
-        QtCore.Qt.AlignRight
-        )
+        0, QtCore.Qt.AlignRight)
+        self.horizontalLayout.addStretch()
+# --------------------------------------------------------------------------------
+#----------------------------------------------------------------------- resume button
+        self.horizontalLayout.addStretch() 
+        self.resume_button = QtWidgets.QPushButton(self.layoutWidget)
+        self.resume_button.setObjectName("resume_button")
+        self.resume_button.setMinimumSize(QtCore.QSize(48, 32)) # 110
+        self.resume_button.setMaximumHeight(48) # 32
+        self.resume_button.setStyleSheet("QPushButton {\n"
+"       background-color: #34b233;\n"
+"       border: 4px solid #ACADAF;\n"
+"       border-radius: 7px;\n"
+"       font-weight: bold;\n"
+"       font-size: 16px;\n"
+"       padding: 4px 10 px;\n"                                       
+"}"
+        "QPushButton:hover {\n"
+"       background-color: #58a825;\n"
+"}"
+        "QPushButton:pressed {\n"
+"       color: white;\n" # font color
+"       background-color: #008000;\n"
+"}")
+        self.horizontalLayout.addWidget(
+        self.resume_button,
+        0, QtCore.Qt.AlignRight)
         self.horizontalLayout.addStretch()
 # --------------------------------------------------------------------------------
         self.value_system_action = QtWidgets.QLabel(self.layoutWidget)
@@ -735,52 +759,52 @@ class Ui_MainWindow(object):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
         self.LBL_GATEWAY.setText(_translate("MainWindow", "🛡️ Authority and Safety Cybersecurity Gateway"))
-        self.stop_button.setText(_translate("MainWindow", "E-STOP"))
+        self.stop_button.setText(_translate("MainWindow", ""))
         self.value_system_action.setText(_translate("MainWindow", "System action"))          # system action value
         # ------------------------------------------------------------------------------------------------------
         self.LBL_NAC.setText(_translate("MainWindow", "🌐 Network Access Control"))
         self.lbl_ip.setText(_translate("MainWindow", "Incoming IP"))
-        self.value_ip.setText(_translate("MainWindow", "--.--.--.--"))                          # IP  value
+        self.value_ip.setText(_translate("MainWindow", "No connection"))                          # IP  value
         # ------------------------------------------------------------------------------------------------------
         self.lbl_author.setText(_translate("MainWindow", "Authorization"))      
-        self.value_authorize.setText(_translate("MainWindow", "Unknown"))                   # Authorization value
+        self.value_authorize.setText(_translate("MainWindow", "Not Available"))                   # Authorization value
         # ------------------------------------------------------------------------------------------------------
         self.lbl_port.setText(_translate("MainWindow", "Connection port"))
-        self.value_port.setText(_translate("MainWindow", "No port"))                          # Port value
+        self.value_port.setText(_translate("MainWindow", "Not Available"))                          # Port value
         # ------------------------------------------------------------------------------------------------------
         self.lbl_packets.setText(_translate("MainWindow", "Rejected packets"))
-        self.value_packets.setText(_translate("MainWindow", "-"))                         # Packets value
+        self.value_packets.setText(_translate("MainWindow", "N/A"))                         # Packets value
         # ------------------------------------------------------------------------------------------------------
         self.LBL_RTDE.setText(_translate("MainWindow", "🤖 Real-Time Robot Telemetry (RTDE)"))
         self.lbl_cartesian.setText(_translate("MainWindow", "Cartesian pose (base frame)"))
         # ------------------------------------------------------------------------------------------------------
-        self.value_X.setText(_translate("MainWindow", "X -.-"))                                               # X value
-        self.value_Rz.setText(_translate("MainWindow", "Rz -.-"))                                             # Rz value
-        self.value_Y.setText(_translate("MainWindow", "Y -.-"))                                               # Y value
-        self.value_Z.setText(_translate("MainWindow", "Z -.-"))                                                # Z value
-        self.value_Rx.setText(_translate("MainWindow", "Rx -.-"))                                             # Rx value
-        self.value_Ry.setText(_translate("MainWindow", "Ry -.-"))                                             # Ry value
+        self.value_X.setText(_translate("MainWindow", "X __"))                                               # X value
+        self.value_Rz.setText(_translate("MainWindow", "Rz __"))                                             # Rz value
+        self.value_Y.setText(_translate("MainWindow", "Y __"))                                               # Y value
+        self.value_Z.setText(_translate("MainWindow", "Z __"))                                                # Z value
+        self.value_Rx.setText(_translate("MainWindow", "Rx __"))                                             # Rx value
+        self.value_Ry.setText(_translate("MainWindow", "Ry __"))                                             # Ry value
         # ------------------------------------------------------------------------------------------------------
         self.lbl_joints.setText(_translate("MainWindow", "Joint angles (deg)"))
         # ------------------------------------------------------------------------------------------------------
-        self.value_J1.setText(_translate("MainWindow", "J1 --°"))                                               # base value
-        self.value_J2.setText(_translate("MainWindow", "J2 --°"))                                               # shoulder value
-        self.value_J3.setText(_translate("MainWindow", "J3 --°"))                                               # elbow value
-        self.value_J4.setText(_translate("MainWindow", "J4 --°"))                                               # wrist 1 value
-        self.value_J5.setText(_translate("MainWindow", "J5 --°"))                                               # wrist 2 value
-        self.value_J6.setText(_translate("MainWindow", "J6 --°"))                                                # wrist 3 value
+        self.value_J1.setText(_translate("MainWindow", "J1 __°"))                                               # base value
+        self.value_J2.setText(_translate("MainWindow", "J2 __°"))                                               # shoulder value
+        self.value_J3.setText(_translate("MainWindow", "J3 __°"))                                               # elbow value
+        self.value_J4.setText(_translate("MainWindow", "J4 __°"))                                               # wrist 1 value
+        self.value_J5.setText(_translate("MainWindow", "J5 __°"))                                               # wrist 2 value
+        self.value_J6.setText(_translate("MainWindow", "J6 __°"))                                                # wrist 3 value
         # ------------------------------------------------------------------------------------------------------
         self.LBL_CMD.setText(_translate("MainWindow", "🔍 Incoming Command Inspector"))
         self.value_cmd.setText(_translate("MainWindow", "No command"))                                          # active command value
         # ------------------------------------------------------------------------------------------------------
         self.lbl_position.setText(_translate("MainWindow", "Target position"))  
-        self.value_position.setText(_translate("MainWindow", "[--, --, --]"))                                   # target position value
+        self.value_position.setText(_translate("MainWindow", "[Unavailable]"))                                   # target position value
         # ------------------------------------------------------------------------------------------------------
         self.lbl_veloc.setText(_translate("MainWindow", "Target velocity"))
-        self.value_veloc.setText(_translate("MainWindow", "-.-- m/s"))                                           # target velocity value
+        self.value_veloc.setText(_translate("MainWindow", "____/s"))                                           # target velocity value
         # ------------------------------------------------------------------------------------------------------
         self.lbl_accel.setText(_translate("MainWindow", "Target accel"))
-        self.value_accel.setText(_translate("MainWindow", "-.-- m/s²"))                                         # target accel value
+        self.value_accel.setText(_translate("MainWindow", "____/s²"))                                         # target accel value
         # ------------------------------------------------------------------------------------------------------
         self.lbl_gripper.setText(_translate("MainWindow", "Gripper status"))
         self.value_gripper.setText(_translate("MainWindow", "Unavailable"))                                       # gripper status value
@@ -789,19 +813,19 @@ class Ui_MainWindow(object):
         # ------------------------------------------------------------------------------------------------------
         self.LBL_INTERLO.setText(_translate("MainWindow", "Safety Parameter Interlock"))
         self.lbl_vel_limit.setText(_translate("MainWindow", "Velocity limit"))
-        self.value_vel_limit.setText(_translate("MainWindow", "-.-- m/s"))                                      # preset velocity limit value
+        self.value_vel_limit.setText(_translate("MainWindow", "____/s"))                                      # preset velocity limit value
         # ------------------------------------------------------------------------------------------------------
         self.lbl_req_speed.setText(_translate("MainWindow", "Requested speed"))
-        self.value_req_speed.setText(_translate("MainWindow", "-.-- m/s"))                                      # requested speed value
+        self.value_req_speed.setText(_translate("MainWindow", "____/s"))                                      # requested speed value
         # ------------------------------------------------------------------------------------------------------
         self.lbl_accel_limit.setText(_translate("MainWindow", "Accel limit"))
-        self.value_accel_limit.setText(_translate("MainWindow", "-.-- m/s²"))                                   # preset accel value
+        self.value_accel_limit.setText(_translate("MainWindow", "____/s²"))                                   # preset accel value
         # ------------------------------------------------------------------------------------------------------
         self.lbl_req_accel.setText(_translate("MainWindow", "Requested accel"))
-        self.value_req_accel.setText(_translate("MainWindow", "-.-- m/s²"))                                     # requested speed value
+        self.value_req_accel.setText(_translate("MainWindow", "____/s²"))                                     # requested speed value
         # ------------------------------------------------------------------------------------------------------
         self.violation_status.setText(_translate("MainWindow", "Unavailable Violation Status"))              # violation status value
-        self.violation_action.setText(_translate("MainWindow", "Unavailable Violation Action"))                 # violation action value
+        self.violation_action.setText(_translate("MainWindow", "Unavailable Action"))                 # violation action value
         # ------------------------------------------------------------------------------------------------------
         self.LBL_LOG.setText(_translate("MainWindow", "Security and Event Audit Log"))
         item = self.tableEvents.horizontalHeaderItem(0)                                      # time? value

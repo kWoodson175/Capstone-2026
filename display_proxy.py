@@ -9,6 +9,7 @@ from security_policy import is_ip_allowed # imports the ip whitelist
 URSIM_IP = "192.168.56.101"
 #URSIM_IP = "192.168.1.112"  # Physical robot IP
 LOCAL_HOST = "127.0.0.1"
+
 PORTS_TO_PROXY = [29999, 30001, 30002, 30003, 30004] 
                 # DISPLAY CHANGES   
                 # 29999 = dashboard server
@@ -98,34 +99,11 @@ def inspect_urscript(data):
                         "speed": v_val,
                         "acceleration": a_val,
                         "allowed": is_safe,
-                        "reason": (None if is_safe else reason),
-                        "source_ip": LOCAL_HOST,
-                        "destination_port": 30002
+                        "reason": (None if is_safe else reason)
+                        #"source_ip": LOCAL_HOST,
+                        #"destination_port": 30002
                     })
             
-            # CHANGES
-            # Gripper commands added
-            if "rq_close_and_wait()" in cmd_lower:
-                print("[GRIPPER] CLOSE")
-
-                emit_event({
-                    "event_type": "gripper",
-                    "gripper": "Close",
-                    "raw_command": clean_line,
-                    "source_ip": LOCAL_HOST,
-                    "destination_port": 30002
-                })
-
-            elif "rq_open_and_wait()" in cmd_lower:
-                print("[GRIPPER] OPEN")
-
-                emit_event({
-                    "event_type": "gripper",
-                    "gripper": "Open",
-                    "raw_command": clean_line,
-                    "source_ip": LOCAL_HOST,
-                    "destination_port": 30002
-                })
     except UnicodeDecodeError:
         pass
 
@@ -222,31 +200,49 @@ def inspect_rtde(packet):
             "speed": v,
             "acceleration": a,
             "allowed": is_safe,
-            "reason": (None if is_safe else reason),
-            "source_ip": LOCAL_HOST,
-            "destination_port": 30004
+            "reason": (None if is_safe else reason)
+            #"source_ip": LOCAL_HOST,
+            #"destination_port": 30004
         })
 
         return is_safe
+
+# STOP CHANGES
+ACTIVE_EMERGENCY = False
+
+stop_script = b"stopj(5.0)\n" # deceleration in rad/s^2
 
 def send_stop_command():
     """
     Stop the running UR program
     """
     try:
+        global ACTIVE_EMERGENCY 
+                
+        ACTIVE_EMERGENCY = True
+        
         print("[FIREWALL] Sending STOP command to robot...")
 
-        stop_script = b"stopj(5.0)\n" # deceleration in rad/s^2
+        while(ACTIVE_EMERGENCY):
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.settimeout(1.0)
+                s.connect((URSIM_IP, 30002))
+                s.sendall(stop_script)
 
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.settimeout(1.0)
-            s.connect((URSIM_IP, 30002))
-            s.sendall(stop_script)
-
-        print("[FIREWALL] stopj() sent")
+        print("[FIREWALL] stopj() loop exited")
 
     except Exception as e:
         print(f"[ERROR] Unable to send motion stop: {e}")
+
+def resume():
+    global ACTIVE_EMERGENCY
+    print("[FIREWALL] Resuming movement in robot...")
+    ACTIVE_EMERGENCY = False
+
+def start_stop_thread():
+        threading.Thread(
+            target=send_stop_command,
+            daemon=True).start()
 
 """
 Read arbitrary TCP chunks from port 30004.
@@ -322,7 +318,8 @@ def forward_rtde_stream(source, destination):
                 
                 # Added for the Stop()            
                 # The packet is blocked and not sent to the robot
-                send_stop_command()
+                # CHANGED runs stop command as a thread
+                start_stop_thread()
                 
 # general forwarder
 def forward_traffic(source, destination, port, direction):
@@ -354,7 +351,8 @@ def forward_traffic(source, destination, port, direction):
             # Added for the Stop()
             elif direction == "to_robot":
                 # The packet is blocked and not sent to the robot
-                send_stop_command()
+                # Runs stop command as a thread
+                start_stop_thread()
 
             
     except ConnectionResetError:
@@ -378,6 +376,7 @@ def handle_connection(local_socket, target_port):
     except Exception as e:
         local_socket.close()
 
+
 def start_listener(port):
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -388,11 +387,23 @@ def start_listener(port):
     while True:
         local_socket, addr = server.accept()
         client_ip = addr[0]
+        ip_allowed = True
 
         #-----------------------------------------
         # Whitelist IP check
         #------------------------------------------
-        if not is_ip_allowed(client_ip):
+        ip_allowed = is_ip_allowed(client_ip)
+
+        # DISPLAY CHANGE
+        # This needs to happen before the connection is dropped
+        emit_event({    
+            "event_type": "connection",
+            "client_ip": client_ip,
+            "port": port,
+            "ip_decision": ip_allowed
+        })
+
+        if not ip_allowed:
             print(f"[FIREWALL] BLOCKED connection attempt from unauthorized IP: {client_ip} on port {port}")
             local_socket.close() # Drop connection instantly
             continue # Wait for the next connection

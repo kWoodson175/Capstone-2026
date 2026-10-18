@@ -9,6 +9,21 @@ import sys
 import math # for degrees
 import time # for timers
 
+rejectCount = 0 # + 1 when a movement or IP violation happens
+
+# for converting radians to match the teach pendant
+def normalize_rotation_vector(rx, ry, rz):
+    angle = math.sqrt(rx**2 + ry**2 + rz**2)
+
+    if angle < 1e-9:
+        return rx, ry, rz
+
+    if angle <= math.pi:
+        scale = 1 - (2 * math.pi / angle)
+        return rx * scale, ry * scale, rz * scale
+
+    return rx, ry, rz
+
 # ---------------------------------------------------------
 # Robot connection
 # ---------------------------------------------------------
@@ -45,6 +60,10 @@ class SafetyDashboard(QtWidgets.QMainWindow):
 
         # Stop button is functional
         self.ui.stop_button.clicked.connect(robot_proxy.send_stop_command)
+        #self.ui.stop_button.clicked.connect(robot_proxy.start_stop_thread)
+
+        # resume button functional
+        self.ui.resume_button.clicked.connect(robot_proxy.resume)
         
         # Robot connection starts empty
         self.rtde_r = None
@@ -61,41 +80,23 @@ class SafetyDashboard(QtWidgets.QMainWindow):
     # Proxy event
     def handle_proxy_event(self, data):
 
-        if data.get("event_type") == "gripper":
-            self.update_gripper_command(data)
+        if data.get("event_type") == "connection":
             self.update_network_access(data)
-            return
-        
-        if data.get("command") is not None:
+            
+        elif data.get("command") is not None:
             self.update_command_inspector(data)
-            self.update_network_access(data)
             self.update_safety_interlock(data)
 
-
-    # Connect to UR robot and authorization 
+    # Connect to UR robot 
     def connect_robot(self):
         try:
             print(f"Connecting to robot at {ROBOT_IP}...")
             self.rtde_r = RTDEReceive(ROBOT_IP)
-            print("Connected.")
-
-            self.ui.value_authorize.setText("Authorized")
-            self.ui.value_authorize.setStyleSheet(
-                "background-color: lightgreen;"
-                "border-radius: 10px;"
-                "padding: 4px 10px;"
-            )            
+            print("Connected.")            
 
         except Exception as e:
 
             self.rtde_r = None
-
-            self.ui.value_authorize.setText("Blocked")
-            self.ui.value_authorize.setStyleSheet(
-                "background-color: #ffb3b3;"
-                "border-radius: 10px;"
-                "padding: 4px 10px;"
-            )
 
             print("RTDE connection failed:", e)
 
@@ -166,6 +167,17 @@ class SafetyDashboard(QtWidgets.QMainWindow):
             return
 
         try:
+            # GRIPPER
+            output_bits = self.rtde_r.getActualDigitalOutputBits()
+
+            # check digital_out[0]
+            digital_out_0 = bool(output_bits & (1 << 0))
+
+            if digital_out_0: 
+                self.ui.value_gripper.setText("CLOSED") # High signal
+            else:
+                self.ui.value_gripper.setText("OPEN") # low signal
+            
             # -------------------------------------------------
             # TCP pose
             # [X, Y, Z, Rx, Ry, Rz]
@@ -183,15 +195,17 @@ class SafetyDashboard(QtWidgets.QMainWindow):
             rz = CARTESIAN_POSE[5]
 
             # XYZ returned in meters.
-            # Convert to millimeters for display.
+            # Convert to meters for display.
             self.ui.value_X.setText(f"X {x * 1000:.1f}")
             self.ui.value_Y.setText(f"Y {y * 1000:.1f}")
             self.ui.value_Z.setText(f"Z {z * 1000:.1f}")
 
+            rx, ry, rz = normalize_rotation_vector(rx, ry, rz)
+
             self.ui.value_Rx.setText(f"Rx {rx:.2f}")
             self.ui.value_Ry.setText(f"Ry {ry:.2f}")
             self.ui.value_Rz.setText(f"Rz {rz:.2f}")
-
+            
             # -------------------------------------------------
             # Joint positions
             # [base, shoulder, elbow, wrist1, wrist2, wrist3]
@@ -283,20 +297,24 @@ class SafetyDashboard(QtWidgets.QMainWindow):
                 f"{acceleration:.2f} rad/s²"
             )
 
+
     # Not every data packet includes gripper
-    def update_gripper_command(self, data):
-        gripper = data["gripper"]
-        
-        self.ui.value_gripper.setText(gripper)
+    #def update_gripper_command(self, data):
+    #    gripper = data["gripper"]
+    #    
+    #    self.ui.value_gripper.setText(gripper)
 
-    # Read network access control
+    # Read network access control and authorization 
     def update_network_access(self, data):
+        global rejectCount # for IP violation and also displaying 
 
-        source_IP = data["source_ip"]
-        destination_port = data["destination_port"]
+        client_IP = data.get("client_ip") # moveL, moveJ
+
+        destination_port = data.get("port")
+        ip_decision = data.get("ip_decision")
         
         # Network info 
-        self.ui.value_ip.setText(source_IP)
+        self.ui.value_ip.setText(client_IP)
 
         # https://www.universal-robots.com/articles/ur/interface-communication/remote-control-via-tcpip/ 
 
@@ -312,8 +330,31 @@ class SafetyDashboard(QtWidgets.QMainWindow):
         elif destination_port == 30004:
             self.ui.value_port.setText(str(destination_port) + " (RTDE)")
 
+        if ip_decision == True:
+            self.ui.value_authorize.setText("Authorized")
+            self.ui.value_authorize.setStyleSheet(
+                "background-color: lightgreen;"
+                "border-radius: 10px;"
+                "border: none;"
+                "padding: 4px 10px;"
+            )
+        else:
+            rejectCount += 1
+            self.ui.value_authorize.setText("Blocked")
+            self.ui.value_authorize.setStyleSheet(
+                "background-color: #ffb3b3;"
+                "border-radius: 10px;"
+                "border: none;"
+                "padding: 4px 10px;"
+            )
+
+        self.ui.value_packets.setText(str(rejectCount))
+    
+
     # Read Safety Parameter Interlock
     def update_safety_interlock(self, data):
+        global rejectCount # for when movement violation detected
+
         command = data.get("command")
         speed = data.get("speed")
         accel = data.get("acceleration")
@@ -362,6 +403,9 @@ class SafetyDashboard(QtWidgets.QMainWindow):
                 "    border: none;\n"
                 "}")
         else:
+            rejectCount += 1
+            self.ui.value_packets.setText(str(rejectCount))
+
             self.ui.LBL_INTERLO.setText(f"⚠️ Safety Parameter Interlock")
             self.ui.fraSafety.setStyleSheet("QFrame {\n"
                 "    background-color: white;\n"
