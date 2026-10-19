@@ -3,6 +3,7 @@ import threading
 import time
 import struct # imports struct to translate raw binary bytes into python numbers
 import re  # imports regex to hunt for numbers inside text strings
+import queue # Make sure this is at the top of your file with the other imports
 from security_policy import check_motion_limits #imports the motion limits 
 from security_policy import is_ip_allowed # imports the ip whitelist
 
@@ -23,21 +24,17 @@ PORTS_TO_PROXY = [29999, 30001, 30002, 30003, 30004]
 # This part sends an event (command data + reason) to the display
 # This way I can get rid of the proxy_translator which reads off stdout
 # ----------------------------------------------
-_event_callback = None
-
-def set_event_callback(callback):
-    global _event_callback
-    _event_callback = callback
+# ----------------------------------------------
+# EVENT QUEUE CONFIGURATION
+# ----------------------------------------------
+security_event_queue = queue.Queue()
 
 def emit_event(event):
-    if _event_callback is None:
-        return
-
+    """Drops the intercepted command into the thread-safe queue for the GUI to read."""
     try:
-        _event_callback(event)
-
+        security_event_queue.put(event)
     except Exception as e:
-        print(f"EVENT CALLBACK ERROR: {e}")
+        print(f"QUEUE ERROR: {e}")
 
 # ---------------------------------------------
 # DISPLAY CHANGES 
@@ -99,9 +96,9 @@ def inspect_urscript(data):
                         "speed": v_val,
                         "acceleration": a_val,
                         "allowed": is_safe,
-                        "reason": (None if is_safe else reason)
-                        #"source_ip": LOCAL_HOST,
-                        #"destination_port": 30002
+                        "reason": (None if is_safe else reason),
+                        "source_ip": LOCAL_HOST,
+                        "destination_port": 30002
                     })
             
     except UnicodeDecodeError:
@@ -200,9 +197,9 @@ def inspect_rtde(packet):
             "speed": v,
             "acceleration": a,
             "allowed": is_safe,
-            "reason": (None if is_safe else reason)
-            #"source_ip": LOCAL_HOST,
-            #"destination_port": 30004
+            "reason": (None if is_safe else reason),
+            "source_ip": LOCAL_HOST,
+            "destination_port": 30004
         })
 
         return is_safe
@@ -216,18 +213,26 @@ def send_stop_command():
     """
     Stop the running UR program
     """
+global ACTIVE_EMERGENCY
+
     try:
-        global ACTIVE_EMERGENCY 
+        
                 
         ACTIVE_EMERGENCY = True
         
         print("[FIREWALL] Sending STOP command to robot...")
 
         while(ACTIVE_EMERGENCY):
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.settimeout(1.0)
-                s.connect((URSIM_IP, 30002))
-                s.sendall(stop_script)
+            try:
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                    s.settimeout(1.0)
+                    s.connect((URSIM_IP, 30002))
+                    s.sendall(stop_script)
+            except Exception as inner_e:
+
+                pass
+
+            time.sleep(0.5)
 
         print("[FIREWALL] stopj() loop exited")
 
