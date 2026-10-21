@@ -1,11 +1,16 @@
 from PyQt5 import QtCore, QtWidgets
 from GUI_framework import Ui_MainWindow
 from rtde_receive import RTDEReceiveInterface as RTDEReceive
-import display_proxy as robot_proxy
-from security_policy import(MAX_VELOCITY, MAX_ACCELERATION)
+import URobot_proxy as robot_proxy
+import security_policy 
 import re # for regex
 
+from datetime import datetime
+
 import sys
+import threading
+from queue import Empty
+
 import math # for degrees
 import time # for timers
 
@@ -23,9 +28,6 @@ def normalize_rotation_vector(rx, ry, rz):
         return rx * scale, ry * scale, rz * scale
 
     return rx, ry, rz
-
-# ---------------------------------------------------------
-# Robot connection
 # ---------------------------------------------------------
 
 ROBOT_IP = "192.168.56.101"   # URSim
@@ -35,9 +37,6 @@ UPDATE_INTERVAL_MS = 100 #  100 ms = 0.1 sec
 
 class SafetyDashboard(QtWidgets.QMainWindow):
 
-    # proxy thread emits to this signal
-    proxy_event = QtCore.pyqtSignal(dict)
-
     def __init__(self):
         super().__init__()
 
@@ -46,25 +45,25 @@ class SafetyDashboard(QtWidgets.QMainWindow):
         self.ui.setupUi(self)
 
         # Preset Safety parameters
-        self.ui.value_vel_limit.setText(f"{MAX_VELOCITY:.2f} m/s")
-        self.ui.value_accel_limit.setText(f"{MAX_ACCELERATION:.2f} m/s²") 
+        self.ui.value_vel_limit.setText(f"{security_policy.MAX_VELOCITY} m/s")
+        self.ui.value_accel_limit.setText(f"{security_policy.MAX_ACCELERATION} m/s²") 
 
-        # ---------------------------------------------------------
-        # URobot_proxy
-        # ---------------------------------------------------------
-        self.proxy_event.connect(self.handle_proxy_event)
+        # Start the proxy in the background so the GUI remains responsive.
+        # Events are delivered through display_proxy.security_event_queue.
+        self.proxy_thread = threading.Thread(
+            target=robot_proxy.start_proxy, daemon=True
+        )
+        self.proxy_thread.start()
 
-        robot_proxy.set_event_callback(self.proxy_event.emit)
+        # Check the queue from the GUI thread (all Qt widget changes stay here).
+        self.queue_timer = QtCore.QTimer(self)
+        self.queue_timer.timeout.connect(self.process_queue)
+        self.queue_timer.start(50)
 
-        robot_proxy.start_proxy()
-
-        # Stop button is functional
-        self.ui.stop_button.clicked.connect(robot_proxy.send_stop_command)
-        #self.ui.stop_button.clicked.connect(robot_proxy.start_stop_thread)
-
-        # resume button functional
+        # Keep existing stop/resume behavior, with an audit record for E-STOP.
+        self.ui.stop_button.clicked.connect(self.trigger_manual_stop)
         self.ui.resume_button.clicked.connect(robot_proxy.resume)
-        
+
         # Robot connection starts empty
         self.rtde_r = None
 
@@ -77,15 +76,88 @@ class SafetyDashboard(QtWidgets.QMainWindow):
         self.timer.timeout.connect(self.update_rtde_data)
         self.timer.start(UPDATE_INTERVAL_MS)
 
-    # Proxy event
-    def handle_proxy_event(self, data):
+    def process_queue(self):
+        """Consume pending proxy events safely on the Qt GUI thread."""
+        # Limit work per tick so a busy proxy cannot freeze the display.
+        for _ in range(100):
+            try:
+                event = robot_proxy.security_event_queue.get_nowait()
+            except Empty:
+                break
+            try:
+                self.handle_proxy_event(event)
+            finally:
+                robot_proxy.security_event_queue.task_done()
 
-        if data.get("event_type") == "connection":
+    """Update existing indicators and append each security event to the log."""
+    def handle_proxy_event(self, data):
+        event_type = data.get("event_type")
+        
+        if event_type == "connection":
             self.update_network_access(data)
+            
+            ip = data.get("client_ip", "Unknown") # no IP -> Unknown
+            robot_port = data.get("port", "Unknown")
+            decision = data.get("ip_decision")
+            status = "Authorized" if decision is True else "Blocked" #if decision is False else "Connection"
+            
+            self.add_log_entry(status, f"{ip} -> port {robot_port}") 
             
         elif data.get("command") is not None:
             self.update_command_inspector(data)
             self.update_safety_interlock(data)
+
+            allowed = data.get("allowed")
+            label = "Pass" if allowed is True else "Block" if allowed is False else "Command"
+            description = data.get("raw_command") or f"{data.get('command', 'Unknown command')} on port {data.get('robot_port', '?')}"
+            if allowed is False and data.get("reason"):
+                description = f"{description} | {data['reason']}"
+            
+            self.add_log_entry(label, str(description))
+
+        else:
+            description = data.get("raw_command") or data.get("reason") or str(data)
+            self.add_log_entry(str(event_type or "Event"), str(description))
+
+    # Inserts a new row into the QTableWidget
+    # Insert at the top (row 0) so newest events are always visible
+    def add_log_entry(self, event_type, description):
+        table = self.ui.tableEvents
+        table.insertRow(0)
+        table.setItem(0, 0, QtWidgets.QTableWidgetItem(datetime.now().strftime("%H:%M:%S")))
+        table.setItem(0, 1, QtWidgets.QTableWidgetItem(str(event_type)))
+        table.setItem(0, 2, QtWidgets.QTableWidgetItem(str(description)))
+        # Cap UI memory use; the on-screen log is not a persistent audit file.
+        if table.rowCount() > 1000:
+            table.removeRow(table.rowCount() - 1)
+
+    def trigger_manual_stop(self):
+        """Fires when the E-STOP button is clicked."""
+        robot_proxy.send_stop_command()
+        
+        self.ui.LBL_INTERLO.setText(f"⚠️ Safety Parameter Interlock")
+        self.ui.fraSafety.setStyleSheet("QFrame {\n"
+            "    background-color: white;\n"
+            "    border: 3px solid #FF0000;\n"
+            "    border-radius: 8px;\n"
+            "}")
+        self.ui.fraViolation.setStyleSheet("QFrame {\n"
+            "    background-color: #FFD180;\n"
+            "    border: none;\n"
+            "}")
+        self.ui.violation_status.setText(f"🛑 MANUAL E-STOP TRIGGERED")
+        self.ui.violation_status.setStyleSheet("QLabel {\n"
+            "    font-weight: bold;"
+            "    border: none;\n"
+            "    color: #8B0000;\n"
+            "}")
+        self.ui.violation_action.setText(f"Command blocked and robot placed on hold")
+        self.ui.violation_action.setStyleSheet("QLabel {\n"
+            "    border: none;\n"
+            "    color: #8B0000;\n"
+            "}")
+
+        self.add_log_entry("STOP", "Manual E-Stop button pressed")
 
     # Connect to UR robot 
     def connect_robot(self):
@@ -121,12 +193,8 @@ class SafetyDashboard(QtWidgets.QMainWindow):
             runtime_state = self.rtde_r.getRuntimeState()
             """
             runtime values
-            0 = STOPPING
-            1 = STOPPED
-            2 = PLAYING
-            3 = PAUSING
-            4 = PAUSED
-            5 = RESUMING
+            0 = STOPPING 1 = STOPPED  2 = PLAYING
+            3 = PAUSING  4 = PAUSED   5 = RESUMING
             """
             
             if runtime_state == 2:
@@ -297,20 +365,13 @@ class SafetyDashboard(QtWidgets.QMainWindow):
                 f"{acceleration:.2f} rad/s²"
             )
 
-
-    # Not every data packet includes gripper
-    #def update_gripper_command(self, data):
-    #    gripper = data["gripper"]
-    #    
-    #    self.ui.value_gripper.setText(gripper)
-
     # Read network access control and authorization 
     def update_network_access(self, data):
         global rejectCount # for IP violation and also displaying 
 
         client_IP = data.get("client_ip") # moveL, moveJ
 
-        destination_port = data.get("port")
+        robot_port = data.get("port")
         ip_decision = data.get("ip_decision")
         
         # Network info 
@@ -318,17 +379,17 @@ class SafetyDashboard(QtWidgets.QMainWindow):
 
         # https://www.universal-robots.com/articles/ur/interface-communication/remote-control-via-tcpip/ 
 
-        if destination_port == 30001 or destination_port == 30011:
-            self.ui.value_port.setText(str(destination_port) + " (Primary)")
+        if robot_port == 30001 or robot_port == 30011:
+            self.ui.value_port.setText(str(robot_port) + " (Primary)")
         
-        elif destination_port == 30002 or destination_port == 30012:
-            self.ui.value_port.setText(str(destination_port) + " (Secondary)")
+        elif robot_port == 30002 or robot_port == 30012:
+            self.ui.value_port.setText(str(robot_port) + " (Secondary)")
 
-        elif destination_port == 30003 or destination_port == 30013:
-            self.ui.value_port.setText(str(destination_port) + " (Real-time)")
+        elif robot_port == 30003 or robot_port == 30013:
+            self.ui.value_port.setText(str(robot_port) + " (Real-time)")
         
-        elif destination_port == 30004:
-            self.ui.value_port.setText(str(destination_port) + " (RTDE)")
+        elif robot_port == 30004:
+            self.ui.value_port.setText(str(robot_port) + " (RTDE)")
 
         if ip_decision == True:
             self.ui.value_authorize.setText("Authorized")
@@ -350,7 +411,6 @@ class SafetyDashboard(QtWidgets.QMainWindow):
 
         self.ui.value_packets.setText(str(rejectCount))
     
-
     # Read Safety Parameter Interlock
     def update_safety_interlock(self, data):
         global rejectCount # for when movement violation detected
@@ -381,7 +441,7 @@ class SafetyDashboard(QtWidgets.QMainWindow):
             "}")
 
         if allowed:
-            self.ui.violation_status.setText(f"No violation detected")
+            self.ui.violation_status.setText(f"NO VIOLATION DETECTED")
             self.ui.violation_status.setStyleSheet("QLabel {\n"
                 "    font-weight: bold;\n"
                 "    border: none;\n"
@@ -416,7 +476,7 @@ class SafetyDashboard(QtWidgets.QMainWindow):
                 "    background-color: #FFD180;\n"
                 "    border: none;\n"
                 "}")
-            self.ui.violation_status.setText(f"Violation detected")
+            self.ui.violation_status.setText(f"VIOLATION DETECTED")
             self.ui.violation_status.setStyleSheet("QLabel {\n"
                 "    font-weight: bold;"
                 "    border: none;\n"

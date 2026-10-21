@@ -1,5 +1,5 @@
 # security_policy.py
-
+import math # does math, so it needs math
 # -----------------------------
 # Spatial Safety Bounds (Meters)
 # -----------------------------
@@ -20,7 +20,7 @@ MAX_ACCELERATION = 2.0 #2000 mm/s^2
 # IP Whitelist
 #-----------------------------------
 
-ALLOWED_IPS = ["127.0.0.1", # VM IP
+ALLOWED_IPS = ["127.0.0.1",] # VM IP
                #"192.168.1.101" # IP OF ROBOT
 
 def is_ip_allowed(client_ip):
