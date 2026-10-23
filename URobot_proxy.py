@@ -190,43 +190,82 @@ def inspect_rtde(packet):
 
         return is_safe
 
+#-------------------------------
 # STOP CHANGES
+# 10/23
 ACTIVE_EMERGENCY = False
+_stop_lock = threading.Lock()
 
-stop_script = b"stopj(5.0)\n" # deceleration in rad/s^2
+stop_script = (
+    b"def proxy_stop():\n" \
+    b"  while get_standard_digital_out(1):\n" # until LOW
+    b"      sync()\n"
+    b"  end\n"
+    b"end\n"
+)
+
+import rtde_io
+import rtde_receive
 
 def send_stop_command():
     """
     Stop the running UR program
     """
     global ACTIVE_EMERGENCY
+    rtde_i = None
+    rtde_r = None
 
     try:
-        ACTIVE_EMERGENCY = True
-        
-        print("[FIREWALL] Sending STOP command to robot...")
-
-        while(ACTIVE_EMERGENCY):
-            try:
-                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                    s.settimeout(1.0)
-                    s.connect((URSIM_IP, 30002))
-                    s.sendall(stop_script)
-            except Exception as inner_e:
-
-                pass
-
-            time.sleep(0.5)
-
-        print("[FIREWALL] stopj() loop exited")
+        with _stop_lock:
+            # if we're already stopped
+            if ACTIVE_EMERGENCY: return
+            
+            rtde_i = rtde_io.RTDEIOInterface(URSIM_IP)
+            rtde_r = rtde_receive.RTDEReceiveInterface(URSIM_IP)
+            
+            if not rtde_i.setStandardDigitalOut(1, True):
+                raise RuntimeError("Could not set output 1 HIGH")
+            
+            ACTIVE_EMERGENCY = True
+            print("[FIREWALL] Sending STOP command to robot...")
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.settimeout(2.0)
+                s.connect((URSIM_IP, 30002))
+                s.sendall(stop_script)
+      
+        print("[FIREWALL] Stop released; RTDE motion script must be restarted")
 
     except Exception as e:
-        print(f"[ERROR] Unable to send motion stop: {e}")
+        print(f"[ERROR] Unable to put robot on hold: {e}")
+    finally:
+        for connection in (rtde_r, rtde_i):
+            if connection is not None:
+                try:
+                    connection.disconnect()
+                except Exception:
+                    pass
 
 def resume():
     global ACTIVE_EMERGENCY
     print("[FIREWALL] Resuming movement in robot...")
-    ACTIVE_EMERGENCY = False
+    rtde_i = None
+    try:
+        with _stop_lock:
+            rtde_i = rtde_io.RTDEIOInterface(URSIM_IP)
+            if not rtde_i.setStandardDigitalOut(1, False):
+                raise RuntimeError("Could not set output 1 LOW")
+
+            ACTIVE_EMERGENCY = False
+            print("[FIREWALL] Output 1 LOW requested; releasing wait.")
+    except Exception as e:
+        print(f"[ERROR] Unable to release wait: {e}")
+    finally:
+        if rtde_i is not None:
+            try:
+                rtde_i.disconnect()
+            except Exception:
+                pass
+#-------------------------------
 
 def start_stop_thread():
         threading.Thread(
@@ -289,6 +328,12 @@ def forward_rtde_stream(source, destination):
             # ------------------------------------------------
             # Inspect THIS packet.
             # ------------------------------------------------
+            # MANUAL STOP CHANGE
+            # 10/23
+            if ACTIVE_EMERGENCY and packet[2] == 85:
+                print("[FIREWALL] STOP active: RTDE command data discarded")
+                continue
+            #-------------------------------
 
             allow_packet = inspect_rtde(packet)
 
@@ -304,10 +349,9 @@ def forward_rtde_stream(source, destination):
                 destination.sendall(packet)            
             else:
                 print("[PROXY] RTDE packet discarded")
-                
-                # Added for the Stop()            
+                            
                 # The packet is blocked and not sent to the robot
-                # CHANGED runs stop command as a thread
+                # runs stop command as a thread
                 start_stop_thread()
                 
 # general forwarder
@@ -324,6 +368,17 @@ def forward_traffic(source, destination, port, direction):
             data = source.recv(4096)
             if not data:
                 break
+
+            #-------------------------------
+            # MANUAL STOP CHANGE
+            # 10/23
+            if (ACTIVE_EMERGENCY
+                    and direction == "to_robot"
+                    and port in (30001, 30002, 30003)
+                ):
+                    print("[PROXY] STOP active: incoming script discarded")
+                    continue
+            #-------------------------------
             
             allow_data = True  
             
@@ -342,15 +397,14 @@ def forward_traffic(source, destination, port, direction):
                 # The packet is blocked and not sent to the robot
                 # Runs stop command as a thread
                 start_stop_thread()
-
-            
+           
     except ConnectionResetError:
         pass 
     except ConnectionAbortedError:
         pass
     except Exception as e: 
         print(f"THREAD ERROR: {e}")
-    finally: # DISPLAY CHANGES
+    finally: 
         # if I remember right, this was closing sockets/threads prematurely
         pass
         #source.close()
@@ -383,7 +437,6 @@ def start_listener(port):
         #------------------------------------------
         ip_allowed = is_ip_allowed(client_ip)
 
-        # DISPLAY CHANGE
         # This needs to happen before the connection is dropped
         emit_event({    
             "event_type": "connection",
@@ -399,7 +452,6 @@ def start_listener(port):
             
         threading.Thread(target=handle_connection, args=(local_socket, port), daemon=True).start()
 
-# DISPLAY CHANGES
 def start_proxy():
     print(f"Starting proxy bridge to URSim at {URSIM_IP}...")
     

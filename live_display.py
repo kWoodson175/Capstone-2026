@@ -62,7 +62,7 @@ class SafetyDashboard(QtWidgets.QMainWindow):
 
         # Keep existing stop/resume behavior, with an audit record for E-STOP.
         self.ui.stop_button.clicked.connect(self.trigger_manual_stop)
-        self.ui.resume_button.clicked.connect(robot_proxy.resume)
+        self.ui.resume_button.clicked.connect(self.trigger_manual_resume)
 
         # Robot connection starts empty
         self.rtde_r = None
@@ -99,21 +99,27 @@ class SafetyDashboard(QtWidgets.QMainWindow):
             ip = data.get("client_ip", "Unknown") # no IP -> Unknown
             robot_port = data.get("port", "Unknown")
             decision = data.get("ip_decision")
-            status = "Authorized" if decision is True else "Blocked" #if decision is False else "Connection"
+            log_type = "INFO" if decision is True else "ALERT"
+            if decision is True:
+                description = f"Authorized IP {ip} connect on port {robot_port}" 
+            else:
+                command_port = data.get("raw_command") or f"{data.get('command', 'Unknown command')} on port {data.get('robot_port', '?')}"
+                description = f"Unauthorized IP {ip} attempted {command_port} - dropped" 
             
-            self.add_log_entry(status, f"{ip} -> port {robot_port}") 
+            self.add_log_entry(log_type, str(description)) 
             
         elif data.get("command") is not None:
             self.update_command_inspector(data)
             self.update_safety_interlock(data)
 
             allowed = data.get("allowed")
-            label = "Pass" if allowed is True else "Block" if allowed is False else "Command"
-            description = data.get("raw_command") or f"{data.get('command', 'Unknown command')} on port {data.get('robot_port', '?')}"
+            #label = "Pass" if allowed is True else "Block" if allowed is False else "Command"
+            #description = data.get("raw_command") or f"{data.get('command', 'Unknown command')} on port {data.get('robot_port', '?')}"
             if allowed is False and data.get("reason"):
-                description = f"{description} | {data['reason']}"
+                log_type = "WARN"
+                description = f"{data['reason']}"
             
-            self.add_log_entry(label, str(description))
+                self.add_log_entry(log_type, str(description))
 
         else:
             description = data.get("raw_command") or data.get("reason") or str(data)
@@ -133,7 +139,8 @@ class SafetyDashboard(QtWidgets.QMainWindow):
 
     def trigger_manual_stop(self):
         """Fires when the E-STOP button is clicked."""
-        robot_proxy.send_stop_command()
+
+        robot_proxy.start_stop_thread()
         
         self.ui.LBL_INTERLO.setText(f"⚠️ Safety Parameter Interlock")
         self.ui.fraSafety.setStyleSheet("QFrame {\n"
@@ -158,6 +165,47 @@ class SafetyDashboard(QtWidgets.QMainWindow):
             "}")
 
         self.add_log_entry("STOP", "Manual E-Stop button pressed")
+
+    def trigger_manual_resume(self):
+        """Keep blocking network operations off the Qt GUI thread."""
+        threading.Thread(target=robot_proxy.resume, daemon=True).start()
+
+        self.ui.violation_status.setText(f"MANUAL RESUME PRESSED")
+        self.ui.violation_status.setStyleSheet("QLabel {\n"
+            "    font-weight: bold;\n"
+            "    border: none;\n"
+            "    color: black;\n"
+            "}")            
+        self.ui.violation_action.setText(f"Robot can receive motion commands")
+        self.ui.violation_action.setStyleSheet("QLabel {\n"
+            "    border: none;\n"
+            "    color: black;\n"
+            "}")
+        """
+        # reset if it was a violation E-STOP
+        self.ui.value_req_speed.setStyleSheet("QLabel {\n"
+            "    border: none;\n"
+            "    color: black;\n"
+            "    font-weight: normal;\n"
+            "}")
+        self.ui.value_req_accel.setStyleSheet("QLabel {\n"
+            "    border: none;\n"
+            "    color: black;\n"
+            "    font-weight: normal;\n"
+            "}")
+        """
+        self.ui.fraViolation.setStyleSheet("QFrame {\n"
+            "    background-color: lightgreen;\n"
+            "    border: 1px solid #AFCFEB;\n"
+            "    border-radius: 8px;\n"
+            "}")
+        self.ui.LBL_INTERLO.setText(f"Safety Parameter Interlock")
+        self.ui.fraSafety.setStyleSheet("QFrame {\n"
+            "    background-color: white;\n"
+            "    border: none;\n"
+            "}")
+        
+        self.add_log_entry("INFO", "Manual E-Stop button released")
 
     # Connect to UR robot 
     def connect_robot(self):
