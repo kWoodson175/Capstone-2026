@@ -47,16 +47,21 @@ def inspect_urscript(data):
                 # Use Regex to hunt down the 'a=' and 'v=' values anywhere in the text string
                 a_match = re.search(r'a\s*=\s*([0-9\.]+)', cmd_lower)
                 v_match = re.search(r'v\s*=\s*([0-9\.]+)', cmd_lower)
-                
-                if a_match and v_match:
+                p_match = re.search(r'p\[\s*([-0-9\.]+)\s*,\s*([-0-9\.]+)\s*,\s*([-0-9\.]+)', cmd_lower)
+                if a_match and v_match and p_match:
                     # Extract the numbers from the text
+                    # 10/28 marking the changes for the base restrictions
                     a_val = float(a_match.group(1))
                     v_val = float(v_match.group(1))
-                    
+                    x_val = float(p_match.group(1))
+                    y_val = float(p_match.group(2))
+                    z_val = float(p_match.group(3))
+                  
                     # Firewall Intervention
                     # We feed dummy safe coordinates (0.1, 0.1, 0.1) into the checker 
                     # so it only evaluates our intercepted velocity and acceleration!
-                    is_safe, reason = check_motion_limits(0.1, 0.1, 0.1, v_val, a_val)
+                    # 10/28 marking the changes for the base restrictions
+                    is_safe, reason = check_motion_limits(x_val, y_val, z_val, v_val, a_val)
                     
                     if is_safe:
                         print(f"[TEXT ALLOWED] {clean_line}")
@@ -80,6 +85,7 @@ def inspect_urscript(data):
                         "command": cmd_name,
                         "command_id": cmd_id,
                         "raw_command": clean_line,
+                        "target": [x_val, y_val, z_val, 0, 0, 0], # 10/28 added for base restrictions
                         "speed": v_val,
                         "acceleration": a_val,
                         "allowed": is_safe,
