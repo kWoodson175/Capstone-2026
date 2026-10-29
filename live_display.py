@@ -374,22 +374,29 @@ class SafetyDashboard(QtWidgets.QMainWindow):
         # TARGET position
                     # moveL or moveL_FK
         if command == "moveL": # moveL uses cartesian positions
-    
-            x = target[0] * 1000
-            y = target[1] * 1000
-            z = target[2] * 1000
-    
-            self.ui.value_position.setText(
-                f"[{x:.1f}, {y:.1f}, {z:.1f}]"
-            )
-    
-            self.ui.value_veloc.setText(
-                f"{speed:.2f} m/s"
-            )
 
-            self.ui.value_accel.setText(
-                f"{acceleration:.2f} m/s²"
-            )
+            # 10/28 changes made for the base limit
+            if isinstance(target, list) and len(target) >= 3:
+                x = target[0] * 1000
+                y = target[1] * 1000
+                z = target[2] * 1000
+    
+                self.ui.value_position.setText(
+                f"[{x:.1f}, {y:.1f}, {z:.1f}]")
+            else:
+                self.ur.value.position.setText("[N/A, N/A, N/A]")
+
+            self.ui.value_veloc.setText(f"{speed:.2f} m/s" if speed else "N/A") # 10/28 both lines are changes made 
+            self.ui.value_accel.setText(f"{acceleration:.2f} m/s²" if acceleration else "N/A")
+    
+        
+        # I did this incase what i did doesnt work and we dont lose what already worked before
+            #self.ui.value_veloc.setText(
+                #f"{speed:.2f} m/s")
+            
+
+            #self.ui.value_accel.setText(
+                #f"{acceleration:.2f} m/s²")
 
         # moveJ or  moveJ_IK
         elif command == "moveJ": # moveJ uses joint positions
@@ -538,7 +545,9 @@ class SafetyDashboard(QtWidgets.QMainWindow):
 
             # if speed was the violation
             # if no match is found, re.search returns None
-            if re.search(r'^Velocity', reason):
+            
+            # 10/28 changes made for the base
+            if reason and re.search(r'^Velocity', reason):
                 if command == "moveL":
                     self.ui.value_req_speed.setText(f"{speed:.2f} m/s ⚠️")
                 else: # "moveJ"
@@ -550,7 +559,7 @@ class SafetyDashboard(QtWidgets.QMainWindow):
                     "    font-weight: bold;\n"
                     "}")
             
-            else: # Acceleration is reason
+            elif reason and re.search(r'Acceleration', reason): # Acceleration is reason
                 if command == "moveL":
                     self.ui.value_req_accel.setText(f"{accel:.2f} m/s² ⚠️")
                 else: # "moveJ"
@@ -561,6 +570,9 @@ class SafetyDashboard(QtWidgets.QMainWindow):
                     "    color: #8B0000;\n"
                     "    font-weight: bold;\n"
                     "}")
+            else:
+
+                pass
 
 
         
