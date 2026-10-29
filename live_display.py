@@ -15,6 +15,7 @@ import math # for degrees
 import time # for timers
 
 rejectCount = 0 # + 1 when a movement or IP violation happens
+ACTIVE_EMERGENCY = False
 
 # for converting radians to match the teach pendant
 def normalize_rotation_vector(rx, ry, rz):
@@ -101,25 +102,23 @@ class SafetyDashboard(QtWidgets.QMainWindow):
             decision = data.get("ip_decision")
             log_type = "INFO" if decision is True else "ALERT"
             if decision is True:
-                description = f"Authorized IP {ip} connect on port {robot_port}" 
+                description = f"Authorized IP {ip} connected on port {robot_port}" 
             else:
-                command_port = data.get("raw_command") or f"{data.get('command', 'Unknown command')} on port {data.get('robot_port', '?')}"
-                description = f"Unauthorized IP {ip} attempted {command_port} - dropped" 
+                description = f"Unauthorized IP {ip} attempt on port {robot_port} - dropped" 
             
             self.add_log_entry(log_type, str(description)) 
             
         elif data.get("command") is not None:
-            self.update_command_inspector(data)
-            self.update_safety_interlock(data)
-
             allowed = data.get("allowed")
-            #label = "Pass" if allowed is True else "Block" if allowed is False else "Command"
-            #description = data.get("raw_command") or f"{data.get('command', 'Unknown command')} on port {data.get('robot_port', '?')}"
+
             if allowed is False and data.get("reason"):
                 log_type = "WARN"
                 description = f"{data['reason']}"
             
                 self.add_log_entry(log_type, str(description))
+
+            self.update_command_inspector(data)
+            self.update_safety_interlock(data)
 
         else:
             description = data.get("raw_command") or data.get("reason") or str(data)
@@ -141,7 +140,10 @@ class SafetyDashboard(QtWidgets.QMainWindow):
         """Fires when the E-STOP button is clicked."""
 
         robot_proxy.start_stop_thread()
-        
+
+        global ACTIVE_EMERGENCY
+        ACTIVE_EMERGENCY = True
+
         self.ui.LBL_INTERLO.setText(f"⚠️ Safety Parameter Interlock")
         self.ui.fraSafety.setStyleSheet("QFrame {\n"
             "    background-color: white;\n"
@@ -164,11 +166,14 @@ class SafetyDashboard(QtWidgets.QMainWindow):
             "    color: #8B0000;\n"
             "}")
 
-        self.add_log_entry("STOP", "Manual E-Stop button pressed")
+        self.add_log_entry("ALERT", "Manual E-STOP button pressed")
 
     def trigger_manual_resume(self):
         """Keep blocking network operations off the Qt GUI thread."""
         threading.Thread(target=robot_proxy.resume, daemon=True).start()
+
+        global ACTIVE_EMERGENCY
+        ACTIVE_EMERGENCY = False
 
         self.ui.violation_status.setText(f"MANUAL RESUME PRESSED")
         self.ui.violation_status.setStyleSheet("QLabel {\n"
@@ -181,19 +186,6 @@ class SafetyDashboard(QtWidgets.QMainWindow):
             "    border: none;\n"
             "    color: black;\n"
             "}")
-        """
-        # reset if it was a violation E-STOP
-        self.ui.value_req_speed.setStyleSheet("QLabel {\n"
-            "    border: none;\n"
-            "    color: black;\n"
-            "    font-weight: normal;\n"
-            "}")
-        self.ui.value_req_accel.setStyleSheet("QLabel {\n"
-            "    border: none;\n"
-            "    color: black;\n"
-            "    font-weight: normal;\n"
-            "}")
-        """
         self.ui.fraViolation.setStyleSheet("QFrame {\n"
             "    background-color: lightgreen;\n"
             "    border: 1px solid #AFCFEB;\n"
@@ -205,7 +197,7 @@ class SafetyDashboard(QtWidgets.QMainWindow):
             "    border: none;\n"
             "}")
         
-        self.add_log_entry("INFO", "Manual E-Stop button released")
+        self.add_log_entry("INFO", "Manual RESUME button pressed. E-STOP released")
 
     # Connect to UR robot 
     def connect_robot(self):
@@ -244,8 +236,9 @@ class SafetyDashboard(QtWidgets.QMainWindow):
             0 = STOPPING 1 = STOPPED  2 = PLAYING
             3 = PAUSING  4 = PAUSED   5 = RESUMING
             """
+            global ACTIVE_EMERGENCY
             
-            if runtime_state == 2:
+            if not ACTIVE_EMERGENCY and runtime_state == 2:
                 self.ui.value_system_action.setText("▶ System running")
                 self.ui.value_system_action.setStyleSheet(
                     f"background-color: lightgreen;"
@@ -258,7 +251,7 @@ class SafetyDashboard(QtWidgets.QMainWindow):
                     f"background-color: #ffe699;"
                     "    font-weight: bold;"
                 )
-            elif runtime_state == 1:
+            elif ACTIVE_EMERGENCY or runtime_state == 1:
                 self.ui.value_system_action.setText("🛑 System stopped")
                 self.ui.value_system_action.setStyleSheet(
                     f"background-color: #ffb3b3;"
@@ -374,8 +367,8 @@ class SafetyDashboard(QtWidgets.QMainWindow):
         # TARGET position
                     # moveL or moveL_FK
         if command == "moveL": # moveL uses cartesian positions
-
-            # 10/28 changes made for the base limit
+    
+            # Changes for Base limit
             if isinstance(target, list) and len(target) >= 3:
                 x = target[0] * 1000
                 y = target[1] * 1000
@@ -384,19 +377,10 @@ class SafetyDashboard(QtWidgets.QMainWindow):
                 self.ui.value_position.setText(
                 f"[{x:.1f}, {y:.1f}, {z:.1f}]")
             else:
-                self.ur.value.position.setText("[N/A, N/A, N/A]")
-
-            self.ui.value_veloc.setText(f"{speed:.2f} m/s" if speed else "N/A") # 10/28 both lines are changes made 
-            self.ui.value_accel.setText(f"{acceleration:.2f} m/s²" if acceleration else "N/A")
+                self.ui.value_position.setText("[N/A, N/A, N/A]")
     
-        
-        # I did this incase what i did doesnt work and we dont lose what already worked before
-            #self.ui.value_veloc.setText(
-                #f"{speed:.2f} m/s")
-            
-
-            #self.ui.value_accel.setText(
-                #f"{acceleration:.2f} m/s²")
+            self.ui.value_veloc.setText(f"{speed:.2f} m/s" if speed else "N/A")
+            self.ui.value_accel.setText(f"{acceleration:.2f} m/s²" if acceleration else "N/A")
 
         # moveJ or  moveJ_IK
         elif command == "moveJ": # moveJ uses joint positions
@@ -521,6 +505,9 @@ class SafetyDashboard(QtWidgets.QMainWindow):
             rejectCount += 1
             self.ui.value_packets.setText(str(rejectCount))
 
+            global ACTIVE_EMERGENCY
+            ACTIVE_EMERGENCY = True
+
             self.ui.LBL_INTERLO.setText(f"⚠️ Safety Parameter Interlock")
             self.ui.fraSafety.setStyleSheet("QFrame {\n"
                 "    background-color: white;\n"
@@ -537,17 +524,14 @@ class SafetyDashboard(QtWidgets.QMainWindow):
                 "    border: none;\n"
                 "    color: #8B0000;\n"
                 "}")
-            self.ui.violation_action.setText(f"Command blocked and robot placed on hold")
+            self.ui.violation_action.setText(f"Command blocked and robot EMERGENCY STOPPED")
             self.ui.violation_action.setStyleSheet("QLabel {\n"
                 "    border: none;\n"
                 "    color: #8B0000;\n"
                 "}")
 
-            # if speed was the violation
             # if no match is found, re.search returns None
-            
-            # 10/28 changes made for the base
-            if reason and re.search(r'^Velocity', reason):
+            if reason and re.search(r'^Velocity', reason): # Speed violation
                 if command == "moveL":
                     self.ui.value_req_speed.setText(f"{speed:.2f} m/s ⚠️")
                 else: # "moveJ"
@@ -558,7 +542,7 @@ class SafetyDashboard(QtWidgets.QMainWindow):
                     "    color: #8B0000;\n"
                     "    font-weight: bold;\n"
                     "}")
-            
+                 
             elif reason and re.search(r'Acceleration', reason): # Acceleration is reason
                 if command == "moveL":
                     self.ui.value_req_accel.setText(f"{accel:.2f} m/s² ⚠️")
@@ -571,11 +555,9 @@ class SafetyDashboard(QtWidgets.QMainWindow):
                     "    font-weight: bold;\n"
                     "}")
             else:
-
                 pass
 
 
-        
 # ---------------------------------------------------------
 # START APPLICATION
 # ---------------------------------------------------------

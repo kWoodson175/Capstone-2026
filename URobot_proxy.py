@@ -196,9 +196,7 @@ def inspect_rtde(packet):
 
         return is_safe
 
-#-------------------------------
-# STOP CHANGES
-# 10/23
+#------------------------------- STOP/RESUME
 ACTIVE_EMERGENCY = False
 _stop_lock = threading.Lock()
 
@@ -211,67 +209,96 @@ stop_script = (
 )
 
 import rtde_io
-import rtde_receive
+import atexit
+
+# Proxy controls I/O of robot
+_rtde_io_connection = None
+
+def _get_rtde_io_locked():
+    global _rtde_io_connection
+
+    if _rtde_io_connection is None:
+        _rtde_io_connection = rtde_io.RTDEIOInterface(URSIM_IP)
+
+    return _rtde_io_connection
+
+def _disconnect_rtde_io_locked():
+    global _rtde_io_connection
+
+    connection = _rtde_io_connection
+    _rtde_io_connection = None
+
+    if connection is not None:
+        try:
+            connection.disconnect()
+        except Exception:
+            pass
+
+def _set_stop_output_locked(value):
+    try:
+        connection = _get_rtde_io_locked()
+
+        if not connection.setStandardDigitalOut(1, value):
+            state = "HIGH" if value else "LOW"
+            raise RuntimeError(f"Could not set output 1 {state}")
+    except Exception:
+        # Allow the next request to establish a fresh connection.
+        _disconnect_rtde_io_locked()
+        raise
+
+def initialize_stop_io():
+    """Connect at startup without changing any digital outputs."""
+    try:
+        with _stop_lock:
+            _get_rtde_io_locked()
+
+        print("[PROXY] Digital-output connection ready")
+
+    except Exception as e:
+        print(f"[ERROR] Digital-output connection unavailable: {e}")
+
+def close_stop_io():
+    with _stop_lock:
+        _disconnect_rtde_io_locked()
+
+atexit.register(close_stop_io)
 
 def send_stop_command():
     """
     Stop the running UR program
     """
     global ACTIVE_EMERGENCY
-    rtde_i = None
-    rtde_r = None
-
+    
     try:
         with _stop_lock:
             # if we're already stopped
             if ACTIVE_EMERGENCY: return
             
-            rtde_i = rtde_io.RTDEIOInterface(URSIM_IP)
-            rtde_r = rtde_receive.RTDEReceiveInterface(URSIM_IP)
-            
-            if not rtde_i.setStandardDigitalOut(1, True):
-                raise RuntimeError("Could not set output 1 HIGH")
-            
+            _set_stop_output_locked(True)
             ACTIVE_EMERGENCY = True
+            
             print("[FIREWALL] Sending STOP command to robot...")
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.settimeout(2.0)
                 s.connect((URSIM_IP, 30002))
                 s.sendall(stop_script)
-      
-        print("[FIREWALL] Stop released; RTDE motion script must be restarted")
 
     except Exception as e:
         print(f"[ERROR] Unable to put robot on hold: {e}")
-    finally:
-        for connection in (rtde_r, rtde_i):
-            if connection is not None:
-                try:
-                    connection.disconnect()
-                except Exception:
-                    pass
+
 
 def resume():
     global ACTIVE_EMERGENCY
     print("[FIREWALL] Resuming movement in robot...")
-    rtde_i = None
+
     try:
         with _stop_lock:
-            rtde_i = rtde_io.RTDEIOInterface(URSIM_IP)
-            if not rtde_i.setStandardDigitalOut(1, False):
-                raise RuntimeError("Could not set output 1 LOW")
-
+            _set_stop_output_locked(False)
             ACTIVE_EMERGENCY = False
+            
             print("[FIREWALL] Output 1 LOW requested; releasing wait.")
     except Exception as e:
         print(f"[ERROR] Unable to release wait: {e}")
-    finally:
-        if rtde_i is not None:
-            try:
-                rtde_i.disconnect()
-            except Exception:
-                pass
-#-------------------------------
 
 def start_stop_thread():
         threading.Thread(
@@ -331,16 +358,18 @@ def forward_rtde_stream(source, destination):
             # Remove only that packet from buffer.
             rtde_buffer = rtde_buffer[packet_size:]
 
-            # ------------------------------------------------
-            # Inspect THIS packet.
-            # ------------------------------------------------
             # MANUAL STOP CHANGE
-            # 10/23
             if ACTIVE_EMERGENCY and packet[2] == 85:
-                print("[FIREWALL] STOP active: RTDE command data discarded")
-                continue
-            #-------------------------------
+                print("[FIREWALL] STOP active: RTDE command discarded")
 
+                emit_event({
+                    "event_type": "ALERT",
+                    "reason": "STOP active: RTDE command discarded",
+                    "port": 30004
+                })
+                continue
+
+            # Inspect THIS packet
             allow_packet = inspect_rtde(packet)
 
             # ------------------------------------------------
@@ -375,16 +404,13 @@ def forward_traffic(source, destination, port, direction):
             if not data:
                 break
 
-            #-------------------------------
             # MANUAL STOP CHANGE
-            # 10/23
             if (ACTIVE_EMERGENCY
                     and direction == "to_robot"
                     and port in (30001, 30002, 30003)
                 ):
                     print("[PROXY] STOP active: incoming script discarded")
                     continue
-            #-------------------------------
             
             allow_data = True  
             
@@ -415,6 +441,47 @@ def forward_traffic(source, destination, port, direction):
         pass
         #source.close()
         #destination.close()
+
+# Monitors gripper status and I/O
+GRIPPER_PORT = 30005
+
+def gripper_listener():
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
+        server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        server.bind((LOCAL_HOST, GRIPPER_PORT))
+        server.listen(5)
+
+        while True:
+            client, _ = server.accept()
+            with client:
+                client.settimeout(3)
+                try:
+                    with client.makefile("rb") as reader:
+                        command = reader.readline(32)
+
+                    if command not in (b"OPEN\n", b"CLOSE\n"):
+                        raise ValueError("Invalid gripper command")
+
+                    with _stop_lock:
+                        if ACTIVE_EMERGENCY:
+                            raise RuntimeError("Proxy stop is active")
+
+                        try:
+                            connection = _get_rtde_io_locked()
+                            if not connection.setStandardDigitalOut(
+                                0, command == b"CLOSE\n"
+                            ):
+                                raise RuntimeError("Could not set digital output 0")
+                        except Exception:
+                            _disconnect_rtde_io_locked()
+                            raise
+
+                    client.sendall(b"OK\n")
+                except Exception as e:
+                    try:
+                        client.sendall(f"ERROR: {e}\n".encode())
+                    except OSError:
+                        pass
 
 def handle_connection(local_socket, target_port):
     try:
@@ -460,7 +527,13 @@ def start_listener(port):
 
 def start_proxy():
     print(f"Starting proxy bridge to URSim at {URSIM_IP}...")
+
+    # listener for STOP button
+    threading.Thread(target=initialize_stop_io, daemon=True).start()
+    # listener for Gripper status
+    threading.Thread(target=gripper_listener, daemon=True).start()
     
+    # listeners for commands
     for port in PORTS_TO_PROXY:
         threading.Thread(target=start_listener, args=(port,), daemon=True).start()
 
