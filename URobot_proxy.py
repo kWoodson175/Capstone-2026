@@ -7,17 +7,79 @@ import queue # Make sure this is at the top of your file with the other imports
 from security_policy import check_motion_limits #imports the motion limits 
 from security_policy import is_ip_allowed # imports the ip whitelist
 
-URSIM_IP = "192.168.56.101"
-#URSIM_IP = "192.168.1.112"  # Physical robot IP
+import rtde_io # for stop/gripper
+import atexit  
+
+#11/3 for capturing velocity after STOP sent
+from rtde_receive import RTDEReceiveInterface as RTDEReceive
+import math
+
+#URSIM_IP = "192.168.56.101"
+URSIM_IP = "192.168.1.112"  # Physical robot IP
 LOCAL_HOST = "127.0.0.1"
 
 PORTS_TO_PROXY = [29999, 30001, 30002, 30003, 30004]   
                 # 29999 dashboard server, 30001 Primary, 30002 Secondary, 30003 Real-time
                 # 30004 RTDE
 
+# 11/3 Prints timestamp in milliseconds -----------------------------------------------------------------
+def log_timestamp(details=""):
+    timestamp_ms = time.perf_counter_ns() // 1_000_000
+    print(f"[TIMING] timestamp (ms) = {timestamp_ms} | {details}", flush=True)
+    return timestamp_ms
+
+# Captures actual TCP velocity from the robot; used to log velocity at STOP command
+_velocity_receiver = None
+_velocity_receiver_lock = threading.Lock()
+
+def initialize_velocity_receiver():
+    global _velocity_receiver
+    try:
+        receiver = RTDEReceive(URSIM_IP)
+        with _velocity_receiver_lock:
+            _velocity_receiver = receiver
+        print("[PROXY] Actual-velocity connection ready")
+    except Exception as e:
+        print(f"[DATA] Velocity connection unavailable: {e}")
+
+def capture_stop_velocity():
+    """Latest received TCP linear speed near script send; never reconnect here."""
+    try:
+        with _velocity_receiver_lock:
+            receiver = _velocity_receiver
+        if receiver is None or not receiver.isConnected():
+            return None, "RTDE receiver not connected"
+        
+        velocity_vector = receiver.getActualTCPSpeed()
+        
+        # during steady movement, measured TCP speed == requested speed
+        speed = math.sqrt(sum(float(v) ** 2 for v in velocity_vector[:3]))
+        #     = sqrt of (vX^2 + vY^2 + vZ^2)
+        
+        if len(velocity_vector) < 3 or not math.isfinite(speed):
+            return None, "invalid TCP velocity sample"
+        
+        return speed, None
+    
+    except Exception as e:
+        return None, str(e)
+
+def close_velocity_receiver():
+    global _velocity_receiver
+    with _velocity_receiver_lock:
+        receiver = _velocity_receiver
+        _velocity_receiver = None
+    if receiver is not None:
+        try:
+            receiver.disconnect()
+        except Exception:
+            pass
+
+atexit.register(close_velocity_receiver)
 # ----------------------------------------------
-# EVENT QUEUE CONFIGURATION
-# ----------------------------------------------
+
+
+# EVENT QUEUE CONFIGURATION --------------------------------------
 security_event_queue = queue.Queue()
 
 def emit_event(event):
@@ -66,8 +128,10 @@ def inspect_urscript(data):
                     if is_safe:
                         print(f"[TEXT ALLOWED] {clean_line}")
                     else:
-                        print(f"[TEXT BLOCKED] {clean_line}")
-                        print(f"    -> Reason: {reason}")
+                        # 11/3 for timing
+                        log_timestamp(f"BAD URSCRIPT COMMAND CAUGHT: {reason}")
+                        # 11/3 temporary print(f"[TEXT BLOCKED] {clean_line}")
+                        # 11/3 temporary print(f"    -> Reason: {reason}")
                         allow_packet = False
 
                     # Send command event to live_display
@@ -178,8 +242,10 @@ def inspect_rtde(packet):
         if is_safe:
             print(f"[BINARY ALLOWED] {formatted_cmd}")
         else:
-            print(f"[BINARY BLOCKED] {formatted_cmd}")
-            print(f"    -> Reason: {reason}")
+            # 11/3 for timing
+            log_timestamp(f"BAD RTDE COMMAND CAUGHT: {reason}")
+            # 11/3 temporary print(f"[BINARY BLOCKED] {formatted_cmd}")
+            # 11/3 temporary print(f"    -> Reason: {reason}")
             allow_packet = False
 
         emit_event({    
@@ -207,9 +273,6 @@ stop_script = (
     b"  end\n"
     b"end\n"
 )
-
-import rtde_io
-import atexit
 
 # Proxy controls I/O of robot
 _rtde_io_connection = None
@@ -263,6 +326,7 @@ def close_stop_io():
 
 atexit.register(close_stop_io)
 
+# 11/3 added timing and velocity
 def send_stop_command():
     """
     Stop the running UR program
@@ -273,30 +337,40 @@ def send_stop_command():
         with _stop_lock:
             # if we're already stopped
             if ACTIVE_EMERGENCY: return
-            
+
+            #log_timestamp("STOP request started")
             _set_stop_output_locked(True)
             ACTIVE_EMERGENCY = True
             
-            print("[FIREWALL] Sending STOP command to robot...")
+            # 11/3 temporary print("[FIREWALL] Sending STOP command to robot...")
+            
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.settimeout(2.0)
                 s.connect((URSIM_IP, 30002))
+                log_timestamp("Sending STOP script") 
                 s.sendall(stop_script)
+                # wanted to capture velocity AFTER stop sent
+                speed, velocity_error = capture_stop_velocity()
+                if speed is None:
+                    print(f"[ERROR] TCP speed at STOP script send: unavailable "
+                          f"({velocity_error})", flush=True)
+                else:
+                    print(f"[VELOCITY] TCP speed at STOP script send: {speed:.6f} m/s ", flush=True)
 
     except Exception as e:
+        log_timestamp("STOP failed")
         print(f"[ERROR] Unable to put robot on hold: {e}")
-
 
 def resume():
     global ACTIVE_EMERGENCY
-    print("[FIREWALL] Resuming movement in robot...")
+    # 11/3 temporary print("[FIREWALL] Resuming movement in robot...")
 
     try:
         with _stop_lock:
             _set_stop_output_locked(False)
             ACTIVE_EMERGENCY = False
             
-            print("[FIREWALL] Output 1 LOW requested; releasing wait.")
+            #temporary print("[FIREWALL] Output 1 LOW requested; releasing wait.")
     except Exception as e:
         print(f"[ERROR] Unable to release wait: {e}")
 
@@ -360,7 +434,7 @@ def forward_rtde_stream(source, destination):
 
             # MANUAL STOP CHANGE
             if ACTIVE_EMERGENCY and packet[2] == 85:
-                print("[FIREWALL] STOP active: RTDE command discarded")
+                # 11/3 temporary print("[FIREWALL] STOP active: RTDE command discarded")
 
                 emit_event({
                     "event_type": "ALERT",
@@ -383,7 +457,7 @@ def forward_rtde_stream(source, destination):
             if allow_packet:
                 destination.sendall(packet)            
             else:
-                print("[PROXY] RTDE packet discarded")
+                # 11/3 temporary print("[PROXY] RTDE packet discarded")
                             
                 # The packet is blocked and not sent to the robot
                 # runs stop command as a thread
@@ -409,7 +483,7 @@ def forward_traffic(source, destination, port, direction):
                     and direction == "to_robot"
                     and port in (30001, 30002, 30003)
                 ):
-                    print("[PROXY] STOP active: incoming script discarded")
+                    # 11/3 temporary print("[PROXY] STOP active: incoming script discarded")
                     continue
             
             allow_data = True  
@@ -502,6 +576,7 @@ def start_listener(port):
     
     while True:
         local_socket, addr = server.accept()
+        log_timestamp("Connection received, before IP check")
         client_ip = addr[0]
         ip_allowed = True
 
@@ -519,7 +594,9 @@ def start_listener(port):
         })
 
         if not ip_allowed:
-            print(f"[FIREWALL] BLOCKED connection attempt from unauthorized IP: {client_ip} on port {port}")
+            # 11/3 for timing
+            log_timestamp("Unauthorized IP disconnected")
+            # 11/3 temporary print(f"[FIREWALL] BLOCKED connection attempt from unauthorized IP: {client_ip} on port {port}")
             local_socket.close() # Drop connection instantly
             continue # Wait for the next connection
             
@@ -536,6 +613,10 @@ def start_proxy():
     # listeners for commands
     for port in PORTS_TO_PROXY:
         threading.Thread(target=start_listener, args=(port,), daemon=True).start()
+
+    # 11/3 for getting actual velocity
+    # run in background to not mess up proxy
+    threading.Thread(target=initialize_velocity_receiver, daemon=True).start()
 
 if __name__ == "__main__":
 

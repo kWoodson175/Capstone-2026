@@ -39,14 +39,19 @@ def unsafe_move_around():
     2. Try to move to second position
     """    
 
-    print("\nMoving SAFELY to first point...")
-    rtde_c.moveL(FIRST_XYZ, SPEED_L, ACCEL_L)
+    # speed is a violation
+    print("\nMoving DANGEROUSLY to first point...")
+
+    # 11/3 for timing
+    issued_ms = time.perf_counter_ns() // 1_000_000
+    rtde_c.moveL(FIRST_XYZ, UNSAFE_SPEED_L, ACCEL_L)
+    print(f"[BAD COMMAND ISSUED] timestamp (ms) = {issued_ms}", flush=True)
+
     time.sleep(1)
 
-    # this shouldn't work
-    # speed is a violation
-    print("\nMoving DANGEROUSLY to second point...")
-    rtde_c.moveL(SECOND_XYZ, UNSAFE_SPEED_L, ACCEL_L)
+    print("\nMoving SAFELY to second point...")
+    rtde_c.moveL(SECOND_XYZ, SPEED_L, ACCEL_L)
+
     rtde_c.stopScript()
 
 if __name__ == "__main__":

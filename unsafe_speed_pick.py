@@ -10,7 +10,8 @@ import rtde_receive
 # -----------------------------
 # Robot connection
 # -----------------------------
-ROBOT_IP = "192.168.56.101" # "192.168.1.112"
+ROBOT_IP = "192.168.56.101" 
+# ROBOT_IP = "192.168.1.112"
 PROXY_IP = "127.0.0.1"
 
 # -----------------------------
@@ -22,7 +23,7 @@ ACCEL_L = 0.19      # slow acceleration
 SPEED_J = 0.1       # joint speed
 ACCEL_J = 0.2
 
-PICK_SPEED = 0.51   # DANGER  
+DANGER_PICK_SPEED = 0.51   # DANGER  
 PICK_ACCEL = 0.05
 
 # 28 mm from the pendant is 0.028 m.
@@ -111,7 +112,12 @@ def pick_place(actually_move=True, return_home=True):
     #open_gripper()
 
     print("Moving straight down to pickup height...")
-    rtde_c.moveL(PICKUP_DOWN, PICK_SPEED, PICK_ACCEL)
+
+    # 11/3 for timing
+    issued_ms = time.perf_counter_ns() // 1_000_000
+    rtde_c.moveL(PICKUP_DOWN, DANGER_PICK_SPEED, PICK_ACCEL)
+    print(f"[BAD COMMAND ISSUED] timestamp (ms) = {issued_ms}", flush=True)
+
     print("Pause to close gripper...")
     time.sleep(1.5)
 
@@ -119,7 +125,7 @@ def pick_place(actually_move=True, return_home=True):
     #close_gripper()
 
     print("Moving straight back up...")
-    rtde_c.moveL(PICKUP_XYZ, PICK_SPEED, ACCEL_L)
+    rtde_c.moveL(PICKUP_XYZ, DANGER_PICK_SPEED, ACCEL_L)
     time.sleep(.5)
 
     print("Moving to drop...")
@@ -128,7 +134,7 @@ def pick_place(actually_move=True, return_home=True):
     time.sleep(1)
 
     print("Moving down to drop height...")
-    rtde_c.moveL(DROP_DOWN, PICK_SPEED, PICK_ACCEL)
+    rtde_c.moveL(DROP_DOWN, DANGER_PICK_SPEED, PICK_ACCEL)
     print("Pause to open gripper...")
     time.sleep(1.5)
     
@@ -136,7 +142,7 @@ def pick_place(actually_move=True, return_home=True):
     #open_gripper()
 
     print("Moving back up...")
-    rtde_c.moveL(DROP_XYZ, PICK_SPEED, ACCEL_L)
+    rtde_c.moveL(DROP_XYZ, DANGER_PICK_SPEED, ACCEL_L)
     time.sleep(.5)
 
     if return_home:

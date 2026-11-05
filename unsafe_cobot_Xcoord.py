@@ -8,8 +8,8 @@ import rtde_receive
 # -----------------------------
 # Robot connection
 # -----------------------------
-ROBOT_IP = "192.168.56.101" # simulation
-#ROBOT_IP = "192.168.1.112" # actual cobot
+#ROBOT_IP = "192.168.56.101" # simulation
+ROBOT_IP = "192.168.1.112" # actual cobot
 PROXY_IP = "127.0.0.1"
 
 # -----------------------------
@@ -37,10 +37,14 @@ def unsafe_move_around():
     rtde_c.moveL(FIRST_XYZ, SPEED_L, ACCEL_L)
     time.sleep(1)
 
-    # this shouldn't work
     # Destination is a violation
     print("\nMoving DANGEROUSLY to second point...")
+
+    # 11/3 for timing
+    issued_ms = time.perf_counter_ns() // 1_000_000
     rtde_c.moveL(DANGER_XYZ, SPEED_L, ACCEL_L)
+    print(f"[BAD COMMAND ISSUED] timestamp (ms) = {issued_ms}", flush=True)
+    
     rtde_c.stopScript()
 
 if __name__ == "__main__":

@@ -20,7 +20,7 @@ SPEED_L = 0.08      # normal linear speed
 ACCEL_L = 0.19      # slow acceleration
 
 SPEED_J = 0.1       # joint speed
-ACCEL_J = 2.1       # DANGER
+DANGER_ACCEL_J = 2.1       # DANGER
 
 PICK_SPEED = 0.05   # very slow vertical pickup/drop speed
 PICK_ACCEL = 0.05
@@ -99,12 +99,17 @@ def pick_place(actually_move=True, return_home=True):
     # Start from a safe height above wherever the robot currently is.
     print("\nMoving home first...")
     HOME_JOINTS = get_joint_target(HOME_XYZ)
-    rtde_c.moveJ(HOME_JOINTS, SPEED_J, ACCEL_J)
+
+    # 11/3 for timing
+    issued_ms = time.perf_counter_ns() // 1_000_000
+    rtde_c.moveJ(HOME_JOINTS, SPEED_J, DANGER_ACCEL_J)
+    print(f"[BAD COMMAND ISSUED] timestamp (ms) = {issued_ms}", flush=True)
+
     time.sleep(1)
 
     print("Moving to pick-up...")
     PICKUP_JOINTS = get_joint_target(PICKUP_XYZ)
-    rtde_c.moveJ(PICKUP_JOINTS, SPEED_J, ACCEL_J)
+    rtde_c.moveJ(PICKUP_JOINTS, SPEED_J, DANGER_ACCEL_J)
     time.sleep(1)
 
     #print("Making sure gripper is open...")
@@ -124,7 +129,7 @@ def pick_place(actually_move=True, return_home=True):
 
     print("Moving to drop...")
     DROP_JOINTS = get_joint_target(DROP_XYZ)
-    rtde_c.moveJ(DROP_JOINTS, SPEED_J, ACCEL_J)
+    rtde_c.moveJ(DROP_JOINTS, SPEED_J, DANGER_ACCEL_J)
     time.sleep(1)
 
     print("Moving down to drop height...")
@@ -141,7 +146,7 @@ def pick_place(actually_move=True, return_home=True):
 
     if return_home:
         print("Returning home...")
-        rtde_c.moveJ(HOME_JOINTS, SPEED_J, ACCEL_J)
+        rtde_c.moveJ(HOME_JOINTS, SPEED_J, DANGER_ACCEL_J)
 
     print("\nPick-and-place complete.")
     rtde_c.stopScript()
