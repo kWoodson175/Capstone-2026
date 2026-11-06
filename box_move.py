@@ -7,7 +7,9 @@ import rtde_receive
 # -----------------------------
 # Robot connection
 # -----------------------------
-ROBOT_IP = "192.168.56.101" # "192.168.1.112"
+#ROBOT_IP = "192.168.56.101" 
+ROBOT_IP = "192.168.1.112"
+PROXY_IP = "127.0.0.1"
 
 # -----------------------------
 # Motion settings
@@ -21,7 +23,7 @@ ACCEL_J = 0.2
 # receive and control
 print("Connecting to URSim...")
 rtde_r = rtde_receive.RTDEReceiveInterface(ROBOT_IP)
-rtde_c = rtde_control.RTDEControlInterface(ROBOT_IP)
+rtde_c = rtde_control.RTDEControlInterface(PROXY_IP)
 print("Connected\n")
 
 START_POSE = rtde_r.getActualTCPPose()  # position the sim starts at
@@ -44,22 +46,25 @@ Y_MAX = 0.420
 # =========================================================
 
 # START_POSE = A
-#  C_____D   ----> x
+#  D_____C   ----> x
 #  |     |   | y
 #  |_____|   V
-#  B     A
+#  A     B
+
+# 0.20 m = 20 cm
 
 # Arguments: pose, speed, accel 
 # Straight line in Cartesian space   
 print("Drawing a box...")
 B_POSE = START_POSE.copy() # A
-B_POSE[0] += 0.20          # B <----
+B_POSE[0] += 0.20          # B ---->
 
-C_POSE = B_POSE.copy()     # B
-C_POSE[1] -= 0.20          # |
-                           # V
-D_POSE = C_POSE.copy()     # C
-D_POSE[0] -= 0.20          # ----> D
+C_POSE = B_POSE.copy()     #        C
+C_POSE[1] -= 0.20          #        ^
+                           #        |
+                           #        B
+D_POSE = C_POSE.copy()     
+D_POSE[0] -= 0.20          # D <----
 
 # side to side
 print("Point A to B: moveL in X axis...")

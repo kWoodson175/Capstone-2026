@@ -31,7 +31,8 @@ print("Connected\n")
 
 FIRST_POSE = rtde_r.getActualQ()
 FIRST_POSE[0] += 0.1
-SECOND_POSE = FIRST_POSE.copy() + [0.1, 0.1, 0.1, 0.1, 0.1, 0.1] 
+SECOND_POSE = FIRST_POSE.copy()
+SECOND_POSE[0] -= 0.1 
 
 def unsafe_move_around():
     """
@@ -48,9 +49,9 @@ def unsafe_move_around():
     print("\nMoving DANGEROUSLY to second point...")
     
     # 11/3 for timing
-    issued_ms = time.perf_counter_ns() // 1_000_000
+    #issued_ms = time.perf_counter_ns() // 1_000_000
     rtde_c.moveJ(SECOND_POSE, SPEED_J, UNSAFE_ACCEL_J)
-    print(f"[BAD COMMAND ISSUED] timestamp (ms) = {issued_ms}", flush=True)
+    #print(f"[BAD COMMAND ISSUED] timestamp (ms) = {issued_ms}", flush=True)
     
     rtde_c.stopScript()
 
