@@ -41,9 +41,9 @@ def unsafe_move_around():
     print("\nMoving DANGEROUSLY to second point...")
 
     # 11/3 for timing
-    issued_ms = time.perf_counter_ns() // 1_000_000
+    # issued_ms = time.perf_counter_ns() // 1_000_000
     rtde_c.moveL(DANGER_XYZ, SPEED_L, ACCEL_L)
-    print(f"[BAD COMMAND ISSUED] timestamp (ms) = {issued_ms}", flush=True)
+    #print(f"[BAD COMMAND ISSUED] timestamp (ms) = {issued_ms}", flush=True)
 
     rtde_c.stopScript()
 
