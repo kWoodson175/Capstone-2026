@@ -6,12 +6,26 @@ from pathlib import Path
 import rtde_control
 import rtde_receive
 
+# True = CLOSED else OPEN
+def set_gripper(closed):
+    command = b"CLOSE\n" if closed else b"OPEN\n"
+
+    with socket.create_connection((PROXY_IP, 30005), timeout=5) as client:
+        client.sendall(command)
+        with client.makefile("rb") as reader:
+            response = reader.readline(256)
+
+    if response != b"OK\n":
+        raise RuntimeError(
+            f"Gripper request failed: {response.decode().strip()}"
+        )
+
 
 # -----------------------------
 # Robot connection
 # -----------------------------
-ROBOT_IP = "192.168.56.101" 
-# ROBOT_IP = "192.168.1.112"
+#ROBOT_IP = "192.168.56.101" 
+ROBOT_IP = "192.168.1.112"
 PROXY_IP = "127.0.0.1"
 
 # -----------------------------
@@ -108,21 +122,23 @@ def pick_place(actually_move=True, return_home=True):
     rtde_c.moveJ(PICKUP_JOINTS, SPEED_J, ACCEL_J)
     time.sleep(1)
 
-    #print("Making sure gripper is open...")
-    #open_gripper()
+    print("Making sure gripper is open...")
+    open_gripper()
+    set_gripper(False)
 
     print("Moving straight down to pickup height...")
 
     # 11/3 for timing
-    issued_ms = time.perf_counter_ns() // 1_000_000
+    # issued_ms = time.perf_counter_ns() // 1_000_000
     rtde_c.moveL(PICKUP_DOWN, DANGER_PICK_SPEED, PICK_ACCEL)
-    print(f"[BAD COMMAND ISSUED] timestamp (ms) = {issued_ms}", flush=True)
+    # print(f"[BAD COMMAND ISSUED] timestamp (ms) = {issued_ms}", flush=True)
 
-    print("Pause to close gripper...")
-    time.sleep(1.5)
+    #print("Pause to close gripper...")
+    #time.sleep(1.5)
 
-    #print("Closing gripper...")
-    #close_gripper()
+    print("Closing gripper...")
+    close_gripper()
+    set_gripper(True)
 
     print("Moving straight back up...")
     rtde_c.moveL(PICKUP_XYZ, DANGER_PICK_SPEED, ACCEL_L)
@@ -138,8 +154,9 @@ def pick_place(actually_move=True, return_home=True):
     print("Pause to open gripper...")
     time.sleep(1.5)
     
-    #print("Opening gripper...")
-    #open_gripper()
+    print("Opening gripper...")
+    open_gripper()
+    set_gripper(False)
 
     print("Moving back up...")
     rtde_c.moveL(DROP_XYZ, DANGER_PICK_SPEED, ACCEL_L)
@@ -155,7 +172,7 @@ def pick_place(actually_move=True, return_home=True):
 
 if __name__ == "__main__":
     # One-time gripper wake-up (reset + activate) before any motion.
-    # initialize_gripper()
+    initialize_gripper()
 
     # Set actually_move=True when you are ready for the robot to move.
     pick_place(actually_move=True, return_home=True)
