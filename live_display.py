@@ -31,8 +31,8 @@ def normalize_rotation_vector(rx, ry, rz):
     return rx, ry, rz
 # ---------------------------------------------------------
 
-ROBOT_IP = "192.168.56.101"   # URSim
-#ROBOT_IP = "192.168.1.112"  # Physical robot, if applicable
+#ROBOT_IP = "192.168.56.101"   # URSim
+ROBOT_IP = "192.168.1.112"  # Physical robot, if applicable
 
 UPDATE_INTERVAL_MS = 100 #  100 ms = 0.1 sec
 
@@ -160,7 +160,7 @@ class SafetyDashboard(QtWidgets.QMainWindow):
             "    border: none;\n"
             "    color: #8B0000;\n"
             "}")
-        self.ui.violation_action.setText(f"Command blocked and robot placed on hold")
+        self.ui.violation_action.setText(f"Motion paused. Resumed program may misbehave.")
         self.ui.violation_action.setStyleSheet("QLabel {\n"
             "    border: none;\n"
             "    color: #8B0000;\n"
@@ -523,8 +523,8 @@ class SafetyDashboard(QtWidgets.QMainWindow):
                 "    font-weight: bold;"
                 "    border: none;\n"
                 "    color: #8B0000;\n"
-                "}")
-            self.ui.violation_action.setText(f"Command blocked and robot EMERGENCY STOPPED")
+                "}")                          
+            self.ui.violation_action.setText(f"Motion command(s) blocked and robot STOPPED.")
             self.ui.violation_action.setStyleSheet("QLabel {\n"
                 "    border: none;\n"
                 "    color: #8B0000;\n"

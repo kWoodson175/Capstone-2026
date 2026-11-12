@@ -7,10 +7,13 @@ import queue # Make sure this is at the top of your file with the other imports
 from security_policy import check_motion_limits #imports the motion limits 
 from security_policy import is_ip_allowed # imports the ip whitelist
 
+# for velocity curve, limit how many prints
+from datetime import datetime
+
 import rtde_io # for stop/gripper
 import atexit  
 
-#MARK for capturing velocity after STOP sent
+# DATA for capturing velocity after STOP sent
 from rtde_receive import RTDEReceiveInterface as RTDEReceive
 import math
 
@@ -22,7 +25,7 @@ PORTS_TO_PROXY = [29999, 30001, 30002, 30003, 30004]
                 # 29999 dashboard server, 30001 Primary, 30002 Secondary, 30003 Real-time
                 # 30004 RTDE
 
-# MARK Prints timestamp in milliseconds -----------------------------------------------------------------
+# DATA: Prints timestamp in milliseconds -----------------------------------------------------------------
 def log_timestamp(start=0,end=0,details=""):
     #               nanoseconds to milliseconds
     timestamp_ms = (end - start) // 1_000_000
@@ -130,11 +133,11 @@ def inspect_urscript(data, receive_time=0):
                     if is_safe:
                         print(f"[TEXT ALLOWED] {clean_line}")
                     else:
-                        # MARK for timing
+                        # DATA: for timing
                         detection_time = time.perf_counter_ns()
                         log_timestamp(receive_time, detection_time, f"BAD URSCRIPT COMMAND CAUGHT: {reason}")
-                        # MARK temporary print(f"[TEXT BLOCKED] {clean_line}")
-                        # MARK temporary print(f"    -> Reason: {reason}")
+                        # temporary print(f"[TEXT BLOCKED] {clean_line}")
+                        # temporary print(f"    -> Reason: {reason}")
                         allow_packet = False
 
                     # Send command event to live_display
@@ -166,7 +169,7 @@ def inspect_urscript(data, receive_time=0):
 
     return allow_packet
 
-def inspect_rtde(packet, receive_time=0): # MARK for timing
+def inspect_rtde(packet, receive_time=0): # DATA: for timing
     if len(packet) < 3:
         return False
     
@@ -245,11 +248,11 @@ def inspect_rtde(packet, receive_time=0): # MARK for timing
         if is_safe:
             print(f"[BINARY ALLOWED] {formatted_cmd}")
         else:
-            # MARK for timing
+            # DATA: for timing
             detection_time = time.perf_counter_ns()
             log_timestamp(receive_time, detection_time,f"BAD RTDE COMMAND CAUGHT: {reason}")
-            # MARK temporary print(f"[BINARY BLOCKED] {formatted_cmd}")
-            # MARK temporary print(f"    -> Reason: {reason}")
+            # temporary print(f"[BINARY BLOCKED] {formatted_cmd}")
+            # temporary print(f"    -> Reason: {reason}")
             allow_packet = False
 
         emit_event({    
@@ -330,8 +333,8 @@ def close_stop_io():
 
 atexit.register(close_stop_io)
 
-# MARK added timing and velocity
-def send_stop_command(receive_time=0): # MARK for timing
+# DATA: added timing and velocity
+def send_stop_command(receive_time=0):
     """
     Stop the running UR program
     """
@@ -345,13 +348,13 @@ def send_stop_command(receive_time=0): # MARK for timing
             _set_stop_output_locked(True)
             ACTIVE_EMERGENCY = True
             
-            # MARK temporary print("[FIREWALL] Sending STOP command to robot...")
+            # print("[FIREWALL] Sending STOP command to robot...")
             
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.settimeout(2.0)
                 s.connect((URSIM_IP, 30002))
                 
-                stop_time = time.perf_counter_ns() # MARK for timing
+                stop_time = time.perf_counter_ns() # DATA: for timing
                 s.sendall(stop_script)                
                 # wanted to capture velocity AFTER stop sent
                 speed, velocity_error = capture_stop_velocity()
@@ -368,7 +371,7 @@ def send_stop_command(receive_time=0): # MARK for timing
 
 def resume():
     global ACTIVE_EMERGENCY
-    # MARK temporary print("[FIREWALL] Resuming movement in robot...")
+    # temporary print("[FIREWALL] Resuming movement in robot...")
 
     try:
         with _stop_lock:
@@ -382,7 +385,7 @@ def resume():
 def start_stop_thread(receive_time=0):
         threading.Thread(
             target=send_stop_command,
-            args=(receive_time,), # MARK for timing
+            args=(receive_time,), # DATA: for timing
             daemon=True).start()
 
 """
@@ -399,7 +402,7 @@ def forward_rtde_stream(source, destination):
     while True:
 
         data = source.recv(4096)
-        receive_time = time.perf_counter_ns() # MARK for timing
+        receive_time = time.perf_counter_ns() # DATA: for timing
 
         if not data:
             break
@@ -441,7 +444,7 @@ def forward_rtde_stream(source, destination):
 
             # MANUAL STOP CHANGE
             if ACTIVE_EMERGENCY and packet[2] == 85:
-                # MARK temporary print("[FIREWALL] STOP active: RTDE command discarded")
+                # temporary print("[FIREWALL] STOP active: RTDE command discarded")
 
                 emit_event({
                     "event_type": "ALERT",
@@ -451,7 +454,7 @@ def forward_rtde_stream(source, destination):
                 continue
 
             # Inspect THIS packet
-            allow_packet = inspect_rtde(packet, receive_time) # MARK for timing
+            allow_packet = inspect_rtde(packet, receive_time) # DATA: for timing
 
             # ------------------------------------------------
             # Forward THIS packet only.
@@ -462,14 +465,20 @@ def forward_rtde_stream(source, destination):
             # ------------------------------------------------
 
             if allow_packet:
-                destination.sendall(packet)            
+                destination.sendall(packet)
             else:
-                # MARK temporary print("[PROXY] RTDE packet discarded")
+                # temporary print("[PROXY] RTDE packet discarded")
                             
                 # The packet is blocked and not sent to the robot
                 # runs stop command as a thread
-                # MARK for timing
+                # DATA: for timing
                 start_stop_thread(receive_time)
+
+            # DATA: for velocity curve
+            speed, velocity_error = capture_stop_velocity()
+            if(datetime.now().second % 2 == 0):
+                print(f"[VELOCITY] TCP speed at COMMAND send: {speed:.6f} m/s ", flush=True)            
+                time.sleep(0.5)
                 
 # general forwarder
 def forward_traffic(source, destination, port, direction):
@@ -483,7 +492,7 @@ def forward_traffic(source, destination, port, direction):
 
         while True:
             data = source.recv(4096)
-            receive_time = time.perf_counter_ns() # MARK for timing
+            receive_time = time.perf_counter_ns() # DATA: for timing
 
             if not data:
                 break
@@ -493,7 +502,7 @@ def forward_traffic(source, destination, port, direction):
                     and direction == "to_robot"
                     and port in (30001, 30002, 30003)
                 ):
-                    # MARK temporary print("[PROXY] STOP active: incoming script discarded")
+                    # temporary print("[PROXY] STOP active: incoming script discarded")
                     continue
             
             allow_data = True  
@@ -503,7 +512,7 @@ def forward_traffic(source, destination, port, direction):
             # Uses regex to get text from strings and checks for both lowercase and uppercase commands
             # -------------------------------------------------------------
             if port == 30002 and direction == "to_robot":
-                allow_data = inspect_urscript(data, receive_time) # MARK for timing        
+                allow_data = inspect_urscript(data, receive_time) # DATA: for timing        
                                      
             # Packet Forwarding Decision
             if allow_data:
@@ -512,8 +521,14 @@ def forward_traffic(source, destination, port, direction):
             elif direction == "to_robot":
                 # The packet is blocked and not sent to the robot
                 # Runs stop command as a thread
-                start_stop_thread(receive_time) # MARK for timing
-           
+                start_stop_thread(receive_time) # DATA: for timing
+
+            # DATA: for velocity curve
+            speed, velocity_error = capture_stop_velocity()
+            if(datetime.now().second % 2 == 0):
+                print(f"[VELOCITY] TCP speed at COMMAND send: {speed:.6f} m/s ", flush=True)            
+                time.sleep(0.5)
+
     except ConnectionResetError:
         pass 
     except ConnectionAbortedError:
@@ -604,10 +619,10 @@ def start_listener(port):
         })
 
         if not ip_allowed:
-            # MARK for timing
+            # DATA: for timing
             IP_timer_end = time.perf_counter_ns()
             log_timestamp(IP_timer_start, IP_timer_end, "Unauthorized IP disconnected")
-            # MARK temporary print(f"[FIREWALL] BLOCKED connection attempt from unauthorized IP: {client_ip} on port {port}")
+            # temporary print(f"[FIREWALL] BLOCKED connection attempt from unauthorized IP: {client_ip} on port {port}")
             local_socket.close() # Drop connection instantly
             continue # Wait for the next connection
             
@@ -625,7 +640,7 @@ def start_proxy():
     for port in PORTS_TO_PROXY:
         threading.Thread(target=start_listener, args=(port,), daemon=True).start()
 
-    # MARK for getting actual velocity
+    # DATA: for getting actual velocity
     # run in background to not mess up proxy
     threading.Thread(target=initialize_velocity_receiver, daemon=True).start()
 
