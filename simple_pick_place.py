@@ -6,6 +6,19 @@ from pathlib import Path
 import rtde_control
 import rtde_receive
 
+# True = CLOSED else OPEN
+def set_gripper(closed):
+    command = b"CLOSE\n" if closed else b"OPEN\n"
+
+    with socket.create_connection((PROXY_IP, 30005), timeout=5) as client:
+        client.sendall(command)
+        with client.makefile("rb") as reader:
+            response = reader.readline(256)
+
+    if response != b"OK\n":
+        raise RuntimeError(
+            f"Gripper request failed: {response.decode().strip()}"
+        )
 
 # -----------------------------
 # Robot connection
@@ -80,7 +93,7 @@ Z_MAX = 0.500
 # -----------------------------
 SCRIPT_FOLDER = Path(__file__).resolve().parent
 GRIPPER_SCRIPT = "Gripper.script"
-GRIPPER_PORT = 30002
+GRIPPER_PORT = 30002                 # for gripper motion NOT status
 GRIPPER_SPEED = 150
 GRIPPER_FORCE = 150
 
@@ -323,13 +336,14 @@ def simple_pick_and_place(bin_name=DROP_BIN, actually_move=True, return_home=Tru
 
     # Start from a safe height above wherever the robot currently is.
     rtde_r = rtde_receive.RTDEReceiveInterface(ROBOT_IP)
+
     current = rtde_r.getActualTCPPose()
     current_safe = make_pose(current[0], current[1], Z_HOVER)
     check_pose_limits(current_safe)
 
     print("\nMoving to safe Z first...")
     safe_movel(current_safe, SPEED_L, ACCEL_L)
-# try this following line. uncomment. 
+    # try this following line. uncomment. 
     #safe_movej(current_safe, speed=1.0, accel=1.4)
 
     print("Moving to picture-taking pose...")
@@ -337,12 +351,16 @@ def simple_pick_and_place(bin_name=DROP_BIN, actually_move=True, return_home=Tru
 
     print("Making sure gripper is open...")
     open_gripper()
+    # Set digital output 0 to LOW (False)
+    set_gripper(False)
 
     print("Moving straight down to pickup height...")
     safe_movel(pick_pose, PICK_SPEED, PICK_ACCEL, allow_low_z=True)
 
     print("Closing gripper...")
     close_gripper()
+    # Set digital output 0 to HIGH (True)
+    set_gripper(True)
 
     print("Moving straight back up...")
     safe_movel(PICTURE_POSE, SPEED_L, ACCEL_L)
@@ -355,6 +373,8 @@ def simple_pick_and_place(bin_name=DROP_BIN, actually_move=True, return_home=Tru
 
     print("Opening gripper...")
     open_gripper()
+    # Set digital output 0 to LOW (False)
+    set_gripper(False)
 
     print("Moving back up above the bin...")
     safe_movel(above_bin_pose, SPEED_L, ACCEL_L)
