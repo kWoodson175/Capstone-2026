@@ -10,6 +10,7 @@ import rtde_receive
 #ROBOT_IP = "192.168.56.101" 
 ROBOT_IP = "192.168.1.112"
 
+PROXY_IP = "127.0.0.1"
 # -----------------------------
 # Motion settings
 # -----------------------------
@@ -22,7 +23,7 @@ ACCEL_J = 0.2
 # receive and control
 print("Connecting to URSim...")
 rtde_r = rtde_receive.RTDEReceiveInterface(ROBOT_IP)
-rtde_c = rtde_control.RTDEControlInterface(ROBOT_IP)
+rtde_c = rtde_control.RTDEControlInterface(PROXY_IP)
 print("Connected\n")
 
 HOME_POSE = rtde_r.getActualTCPPose()  # position the sim starts at
